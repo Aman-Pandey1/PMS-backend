@@ -11,9 +11,14 @@ export default function LoginPage() {
 
 	async function handleSubmit(e) {
 		e.preventDefault();
-		await loginWithPassword(email, password);
-		const redirectTo = location.state?.from?.pathname || '/';
-		navigate(redirectTo, { replace: true });
+		try {
+			await loginWithPassword(email, password);
+			const redirectTo = location.state?.from?.pathname || '/';
+			navigate(redirectTo, { replace: true });
+		} catch (err) {
+			alert('Login failed. Check console for details.');
+			console.error('Login failed', err);
+		}
 	}
 
 	return (

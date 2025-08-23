@@ -16,3 +16,18 @@ api.interceptors.request.use((config) => {
 	}
 	return config;
 });
+
+api.interceptors.response.use(
+	(res) => res,
+	(err) => {
+		const info = {
+			url: err.config?.url,
+			method: err.config?.method,
+			status: err.response?.status,
+			data: err.response?.data,
+			message: err.message,
+		};
+		console.error('[API ERROR]', info);
+		return Promise.reject(err);
+	}
+);
