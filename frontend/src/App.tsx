@@ -26,13 +26,13 @@ export default function App() {
         }
       >
         <Route index element={<DashboardPage />} />
-        <Route path="companies" element={<CompaniesPage />} />
+        <Route path="companies" element={<ProtectedRoute roles={['SUPER_ADMIN']}><CompaniesPage /></ProtectedRoute>} />
         <Route path="employees" element={<EmployeesPage />} />
         <Route path="attendance" element={<AttendancePage />} />
         <Route path="leaves" element={<LeavesPage />} />
         <Route path="tasks" element={<TasksPage />} />
         <Route path="documents" element={<DocumentsPage />} />
-        <Route path="payroll" element={<PayrollPage />} />
+        <Route path="payroll" element={<ProtectedRoute roles={['COMPANY_ADMIN','SUPER_ADMIN']}><PayrollPage /></ProtectedRoute>} />
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>

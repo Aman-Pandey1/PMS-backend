@@ -3,7 +3,13 @@ import { Task } from '../models/Task.js';
 
 export async function createTask(req: Request, res: Response) {
 	const { assigneeId, description, deadline, priority } = req.body as any;
-	const item = await Task.create({ companyId: req.user!.companyId, creatorId: req.user!.uid, assigneeId, description, deadline, priority, status: 'OPEN', updates: [], watchers: [] });
+	// Only allow assigning to direct subordinate
+	const { User } = await import('../models/User.js');
+	const assignee = await User.findById(assigneeId);
+	if (!assignee || String(assignee.managerId) !== req.user!.uid) {
+		return res.status(403).json({ error: 'Assignee must be a direct subordinate' });
+	}
+	const item = await Task.create({ companyId: req.user!.companyId, creatorId: req.user!.uid, assigneeId, description, deadline, priority, status: 'OPEN', updates: [], watchers: assignee.ancestors });
 	res.status(201).json(item);
 }
 

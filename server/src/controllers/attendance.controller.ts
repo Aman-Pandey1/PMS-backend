@@ -10,6 +10,28 @@ export async function checkIn(req: Request, res: Response) {
 	const date = dayjs().format('YYYY-MM-DD');
 	const exists = await Attendance.findOne({ userId, date });
 	if (exists) return res.status(409).json({ error: 'Already checked in today' });
+	// Geofence validation: ensure within any allowed zone if zones exist
+	const user = await (await import('../models/User.js')).User.findById(userId).lean();
+	if (user?.geoAllowedZones && user.geoAllowedZones.length > 0) {
+		const inside = user.geoAllowedZones.some((poly: any) => {
+			try {
+				// Simple point-in-polygon using ray casting for Polygon type
+				if (poly.type === 'Polygon') {
+					const coords: [number, number][] = poly.coordinates[0];
+					let c = false;
+					for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
+						const xi = coords[i][0], yi = coords[i][1];
+						const xj = coords[j][0], yj = coords[j][1];
+						const intersect = ((yi > lat) !== (yj > lat)) && (lon < (xj - xi) * (lat - yi) / (yj - yi + Number.EPSILON) + xi);
+						if (intersect) c = !c;
+					}
+					return c;
+				}
+				return false;
+			} catch { return false; }
+		});
+		if (!inside) return res.status(403).json({ error: 'Outside allowed location' });
+	}
 	const rec = await Attendance.create({
 		userId,
 		companyId,
