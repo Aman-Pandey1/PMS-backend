@@ -2,10 +2,12 @@ import argon2 from 'argon2';
 import { User } from '../models/User.js';
 
 export async function listUsers(req, res) {
-	const { companyId } = req.params || {};
+	const { companyId, managerId } = req.query || {};
 	const isSuper = req.user?.role === 'SUPER_ADMIN';
 	const scopeCompanyId = companyId || (!isSuper ? req.user?.companyId : undefined);
-	const where = scopeCompanyId ? { companyId: scopeCompanyId } : {};
+	const where = {};
+	if (scopeCompanyId) where.companyId = scopeCompanyId;
+	if (managerId) where.managerId = managerId;
 	const items = await User.find(where).select('-passwordHash').sort({ createdAt: -1 });
 	res.json({ items });
 }

@@ -6,11 +6,11 @@ export async function listCompanies(_req, res) {
 }
 
 export async function createCompany(req, res) {
-	const { name, code } = req.body || {};
+	const { name, code, status, address, description } = req.body || {};
 	if (!name || !code) return res.status(400).json({ error: 'name and code required' });
 	const exists = await Company.findOne({ code });
 	if (exists) return res.status(409).json({ error: 'code already exists' });
-	const item = await Company.create({ name, code });
+	const item = await Company.create({ name, code, status, address, description });
 	res.status(201).json(item);
 }
 

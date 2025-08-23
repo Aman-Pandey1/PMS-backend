@@ -49,3 +49,12 @@ export async function myLeaves(req, res) {
 	const items = await LeaveRequest.find({ userId }).sort({ createdAt: -1 });
 	res.json({ items });
 }
+
+export async function companyLeaves(req, res) {
+	const companyId = req.user.companyId;
+	const { status } = req.query || {};
+	const where = { companyId };
+	if (status) where.status = status;
+	const items = await LeaveRequest.find(where).sort({ createdAt: -1 });
+	res.json({ items });
+}
