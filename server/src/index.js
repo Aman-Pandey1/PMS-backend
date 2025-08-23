@@ -20,6 +20,13 @@ app.use(morgan('dev'));
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 200 }));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
+
+// global request logging for debugging
+app.use((req, _res, next) => {
+	console.log(`[REQ] ${req.method} ${req.path}`, { query: req.query, body: req.body });
+	next();
+});
+
 app.use('/api', apiRouter);
 
 const port = env.PORT;
