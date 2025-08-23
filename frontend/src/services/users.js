@@ -10,3 +10,8 @@ export async function mySubordinates() {
 	const { data } = await api.get('/users/my-subordinates');
 	return data.items.map((u) => ({ id: u._id || u.id, fullName: u.fullName, email: u.email }));
 }
+
+export async function createUser(input) {
+	const { data } = await api.post('/users', input);
+	return data;
+}
