@@ -9,7 +9,7 @@ import AttendancePage from './pages/AttendancePage.jsx';
 import LeavesPage from './pages/LeavesPage.jsx';
 import TasksPage from './pages/TasksPage.jsx';
 import DocumentsPage from './pages/DocumentsPage.jsx';
-import PayrollPage from './pages/PayrollPage.jsx';
+// import PayrollPage from './pages/PayrollPage.jsx';
 import NotificationsPage from './pages/NotificationsPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
 
@@ -32,7 +32,7 @@ export default function App() {
 				<Route path="leaves" element={<LeavesPage />} />
 				<Route path="tasks" element={<TasksPage />} />
 				<Route path="documents" element={<DocumentsPage />} />
-				<Route path="payroll" element={<ProtectedRoute roles={['COMPANY_ADMIN','SUPER_ADMIN']}><PayrollPage /></ProtectedRoute>} />
+				{/* <Route path="payroll" element={<ProtectedRoute roles={['COMPANY_ADMIN','SUPER_ADMIN']}><PayrollPage /></ProtectedRoute>} /> */}
 				<Route path="notifications" element={<NotificationsPage />} />
 				<Route path="settings" element={<SettingsPage />} />
 			</Route>
