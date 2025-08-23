@@ -8,10 +8,12 @@ import taskRouter from './task.routes.js';
 import documentRouter from './document.routes.js';
 import payrollRouter from './payroll.routes.js';
 import notificationRouter from './notification.routes.js';
+import dashboardRouter from './dashboard.routes.js';
 
 const router = Router();
 
 router.use('/auth', authRouter);
+router.use('/dashboard', dashboardRouter);
 router.use('/companies', companyRouter);
 router.use('/users', userRouter);
 router.use('/attendance', attendanceRouter);
