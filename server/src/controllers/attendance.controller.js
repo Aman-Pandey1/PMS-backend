@@ -5,6 +5,7 @@ import { User } from '../models/User.js';
 export async function checkIn(req, res) {
 	const userId = req.user.uid;
 	const companyId = req.user.companyId;
+	if (!companyId) return res.status(400).json({ error: 'User is not associated with a company' });
 	const { lon, lat } = req.body || {};
 	if (lon === undefined || lat === undefined) return res.status(400).json({ error: 'lon/lat required' });
 	const date = dayjs().format('YYYY-MM-DD');
@@ -36,6 +37,8 @@ export async function checkIn(req, res) {
 
 export async function checkOut(req, res) {
 	const userId = req.user.uid;
+	const companyId = req.user.companyId;
+	if (!companyId) return res.status(400).json({ error: 'User is not associated with a company' });
 	const { report, lon, lat } = req.body || {};
 	const date = dayjs().format('YYYY-MM-DD');
 	const rec = await Attendance.findOne({ userId, date });
