@@ -21,12 +21,12 @@ export default function AttendancePage() {
 
 	return (
 		<div className="space-y-4">
-			<h1 className="text-xl font-semibold">Attendance</h1>
+			<h1 className="text-2xl font-bold">Attendance</h1>
 			<div className="flex gap-2">
-				<button className="bg-green-600 text-white px-3 py-2 rounded" onClick={doCheckIn} disabled={checkedIn}>Check in</button>
-				<button className="bg-red-600 text-white px-3 py-2 rounded" onClick={doCheckOut} disabled={!checkedIn || !report}>Check out</button>
+				<button className="bg-amber-700 hover:bg-amber-800 text-white px-3 py-2 rounded" onClick={doCheckIn} disabled={checkedIn}>Check in</button>
+				<button className="bg-amber-700 hover:bg-amber-800 text-white px-3 py-2 rounded" onClick={doCheckOut} disabled={!checkedIn || !report}>Check out</button>
 			</div>
-			<textarea className="w-full border rounded p-2" placeholder="Daily report (required to check out)" value={report} onChange={(e) => setReport(e.target.value)} />
+			<textarea className="w-full border border-amber-300 rounded p-2" placeholder="Daily report (required to check out)" value={report} onChange={(e) => setReport(e.target.value)} />
 			<div className="text-sm opacity-70">Status: {checkedIn ? 'Checked in' : 'Not checked in'}</div>
 		</div>
 	);

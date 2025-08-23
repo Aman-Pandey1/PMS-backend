@@ -13,12 +13,15 @@ export default function LeavesPage() {
 
 	return (
 		<div className="space-y-4">
-			<h1 className="text-xl font-semibold">Leave Requests</h1>
-			<form onSubmit={submit} className="grid gap-2 max-w-lg">
-				<input type="date" className="border rounded px-3 py-2" value={start} onChange={(e) => setStart(e.target.value)} />
-				<input type="date" className="border rounded px-3 py-2" value={end} onChange={(e) => setEnd(e.target.value)} />
-				<input className="border rounded px-3 py-2" placeholder="Reason" value={reason} onChange={(e) => setReason(e.target.value)} />
-				<button className="bg-blue-600 text-white rounded px-3 py-2">Submit</button>
+			<h1 className="text-2xl font-bold">Leaves</h1>
+			<form onSubmit={submit} className="grid gap-2 max-w-lg bg-white border border-amber-300 rounded p-4">
+				<label className="text-sm text-amber-900">Start date</label>
+				<input type="date" className="border border-amber-300 rounded px-3 py-2" value={start} onChange={(e) => setStart(e.target.value)} />
+				<label className="text-sm text-amber-900">End date</label>
+				<input type="date" className="border border-amber-300 rounded px-3 py-2" value={end} onChange={(e) => setEnd(e.target.value)} />
+				<label className="text-sm text-amber-900">Reason</label>
+				<input className="border border-amber-300 rounded px-3 py-2" placeholder="Reason" value={reason} onChange={(e) => setReason(e.target.value)} />
+				<button className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-2">Submit</button>
 			</form>
 		</div>
 	);

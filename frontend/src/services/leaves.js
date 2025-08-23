@@ -10,6 +10,12 @@ export async function myLeaves() {
 	return data.items;
 }
 
+export async function companyLeaves(params = {}) {
+	const query = new URLSearchParams(params).toString();
+	const { data } = await api.get(`/leaves/company${query ? `?${query}` : ''}`);
+	return data.items;
+}
+
 export async function approveLeave(id) {
 	const { data } = await api.post(`/leaves/${id}/approve`);
 	return data;

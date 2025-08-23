@@ -20,16 +20,16 @@ export default function TasksPage() {
 
 	return (
 		<div className="space-y-4">
-			<h1 className="text-xl font-semibold">Tasks</h1>
+			<h1 className="text-2xl font-bold">Tasks</h1>
 			<div className="grid gap-2">
 				{tasks.map(t => (
-					<div key={t.id} className="border rounded p-3 flex items-center justify-between">
+					<div key={t.id} className="border border-amber-300 rounded p-3 bg-white flex items-center justify-between">
 						<div>
-							<div className="font-medium">{t.description}</div>
+							<div className="font-medium text-amber-900">{t.description}</div>
 							<div className="text-sm opacity-70">{t.status}</div>
 						</div>
 						{t.status !== 'DONE' && (
-							<button className="bg-gray-900 text-white px-3 py-2 rounded" onClick={() => advance(t.id)}>Advance</button>
+							<button className="bg-amber-700 hover:bg-amber-800 text-white px-3 py-2 rounded" onClick={() => advance(t.id)}>Advance</button>
 						)}
 					</div>
 				))}
