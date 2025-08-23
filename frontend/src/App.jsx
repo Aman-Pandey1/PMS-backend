@@ -1,0 +1,42 @@
+import { Route, Routes, Navigate } from 'react-router-dom';
+import { ProtectedRoute } from './components/ProtectedRoute.jsx';
+import DashboardLayout from './layouts/DashboardLayout.jsx';
+import LoginPage from './pages/LoginPage.jsx';
+import DashboardPage from './pages/DashboardPage.jsx';
+import CompaniesPage from './pages/CompaniesPage.jsx';
+import EmployeesPage from './pages/EmployeesPage.jsx';
+import AttendancePage from './pages/AttendancePage.jsx';
+import LeavesPage from './pages/LeavesPage.jsx';
+import TasksPage from './pages/TasksPage.jsx';
+import DocumentsPage from './pages/DocumentsPage.jsx';
+import PayrollPage from './pages/PayrollPage.jsx';
+import NotificationsPage from './pages/NotificationsPage.jsx';
+import SettingsPage from './pages/SettingsPage.jsx';
+
+export default function App() {
+	return (
+		<Routes>
+			<Route path="/login" element={<LoginPage />} />
+			<Route
+				path="/"
+				element={
+					<ProtectedRoute>
+						<DashboardLayout />
+					</ProtectedRoute>
+				}
+			>
+				<Route index element={<DashboardPage />} />
+				<Route path="companies" element={<ProtectedRoute roles={['SUPER_ADMIN']}><CompaniesPage /></ProtectedRoute>} />
+				<Route path="employees" element={<EmployeesPage />} />
+				<Route path="attendance" element={<AttendancePage />} />
+				<Route path="leaves" element={<LeavesPage />} />
+				<Route path="tasks" element={<TasksPage />} />
+				<Route path="documents" element={<DocumentsPage />} />
+				<Route path="payroll" element={<ProtectedRoute roles={['COMPANY_ADMIN','SUPER_ADMIN']}><PayrollPage /></ProtectedRoute>} />
+				<Route path="notifications" element={<NotificationsPage />} />
+				<Route path="settings" element={<SettingsPage />} />
+			</Route>
+			<Route path="*" element={<Navigate to="/" replace />} />
+		</Routes>
+	);
+}
