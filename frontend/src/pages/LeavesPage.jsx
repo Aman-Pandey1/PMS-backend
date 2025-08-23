@@ -1,28 +1,126 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useAuth } from '../contexts/AuthContext.jsx';
 
 export default function LeavesPage() {
+	const { user } = useAuth();
 	const [start, setStart] = useState('');
 	const [end, setEnd] = useState('');
 	const [reason, setReason] = useState('');
+	const [errors, setErrors] = useState({});
+	const [myList, setMyList] = useState([]);
+	const [companyList, setCompanyList] = useState([]);
+
+	useEffect(() => {
+		(async () => {
+			try {
+				const leavesSvc = await import('../services/leaves.js');
+				setMyList(await leavesSvc.myLeaves());
+				if (user?.role === 'SUPER_ADMIN' || user?.role === 'COMPANY_ADMIN' || user?.role === 'SUPERVISOR') {
+					setCompanyList(await leavesSvc.companyLeaves());
+				}
+			} catch (e) { console.error(e); }
+		})();
+	}, [user?.role]);
 
 	async function submit(e) {
 		e.preventDefault();
-		await (await import('../services/leaves.js')).requestLeave({ startDate: start, endDate: end, reason });
-		setStart(''); setEnd(''); setReason('');
+		const errs = {};
+		if (!start) errs.start = 'Start date required';
+		if (!end) errs.end = 'End date required';
+		if (start && end && new Date(start) > new Date(end)) errs.end = 'End must be after start';
+		if (reason.trim().length < 4) errs.reason = 'Reason min 4 chars';
+		setErrors(errs);
+		if (Object.keys(errs).length) return;
+		try {
+			const leavesSvc = await import('../services/leaves.js');
+			await leavesSvc.requestLeave({ startDate: start, endDate: end, reason });
+			setStart(''); setEnd(''); setReason('');
+			setMyList(await leavesSvc.myLeaves());
+		} catch (e) { alert('Failed to request'); }
+	}
+
+	async function act(id, type) {
+		try {
+			const leavesSvc = await import('../services/leaves.js');
+			if (type === 'approve') await leavesSvc.approveLeave(id);
+			if (type === 'reject') await leavesSvc.rejectLeave(id);
+			setCompanyList(await leavesSvc.companyLeaves());
+		} catch (e) { alert('Action failed'); }
 	}
 
 	return (
-		<div className="space-y-4">
+		<div className="space-y-6">
 			<h1 className="text-2xl font-bold">Leaves</h1>
-			<form onSubmit={submit} className="grid gap-2 max-w-lg bg-white border border-amber-300 rounded p-4">
-				<label className="text-sm text-amber-900">Start date</label>
-				<input type="date" className="border border-amber-300 rounded px-3 py-2" value={start} onChange={(e) => setStart(e.target.value)} />
-				<label className="text-sm text-amber-900">End date</label>
-				<input type="date" className="border border-amber-300 rounded px-3 py-2" value={end} onChange={(e) => setEnd(e.target.value)} />
-				<label className="text-sm text-amber-900">Reason</label>
-				<input className="border border-amber-300 rounded px-3 py-2" placeholder="Reason" value={reason} onChange={(e) => setReason(e.target.value)} />
-				<button className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-2">Submit</button>
-			</form>
+			<div className="grid md:grid-cols-2 gap-6">
+				<div className="bg-white border border-amber-300 rounded p-4">
+					<div className="text-amber-900 font-medium mb-3">Apply Leave</div>
+					<form onSubmit={submit} className="grid gap-2">
+						<label className="text-sm text-amber-900">Start date</label>
+						<input type="date" className={"border rounded px-3 py-2 " + (errors.start ? 'border-red-500' : 'border-amber-300')} value={start} onChange={(e) => setStart(e.target.value)} />
+						{errors.start && <div className="text-xs text-red-600">{errors.start}</div>}
+						<label className="text-sm text-amber-900">End date</label>
+						<input type="date" className={"border rounded px-3 py-2 " + (errors.end ? 'border-red-500' : 'border-amber-300')} value={end} onChange={(e) => setEnd(e.target.value)} />
+						{errors.end && <div className="text-xs text-red-600">{errors.end}</div>}
+						<label className="text-sm text-amber-900">Reason</label>
+						<input className={"border rounded px-3 py-2 " + (errors.reason ? 'border-red-500' : 'border-amber-300')} placeholder="Reason" value={reason} onChange={(e) => setReason(e.target.value)} />
+						{errors.reason && <div className="text-xs text-red-600">{errors.reason}</div>}
+						<button className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-2 mt-2">Submit</button>
+					</form>
+				</div>
+
+				<div className="bg-white border border-amber-300 rounded p-4 overflow-x-auto">
+					<div className="text-amber-900 font-medium mb-3">My Leaves</div>
+					<table className="min-w-[600px] w-full">
+						<thead>
+							<tr className="bg-amber-50 text-amber-900">
+								<th className="text-left p-2 border-b border-amber-200">Period</th>
+								<th className="text-left p-2 border-b border-amber-200">Reason</th>
+								<th className="text-left p-2 border-b border-amber-200">Status</th>
+							</tr>
+						</thead>
+						<tbody>
+							{myList.map(l => (
+								<tr key={l._id}>
+									<td className="p-2 border-t border-amber-100">{l.startDate} → {l.endDate}</td>
+									<td className="p-2 border-t border-amber-100">{l.reason}</td>
+									<td className="p-2 border-t border-amber-100">{l.status}</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+				</div>
+			</div>
+
+			{(user?.role === 'SUPER_ADMIN' || user?.role === 'COMPANY_ADMIN' || user?.role === 'SUPERVISOR') && (
+				<div className="bg-white border border-amber-300 rounded p-4 overflow-x-auto">
+					<div className="text-amber-900 font-medium mb-3">Company Leaves</div>
+					<table className="min-w-[800px] w-full">
+						<thead>
+							<tr className="bg-amber-50 text-amber-900">
+								<th className="text-left p-2 border-b border-amber-200">Employee</th>
+								<th className="text-left p-2 border-b border-amber-200">Period</th>
+								<th className="text-left p-2 border-b border-amber-200">Reason</th>
+								<th className="text-left p-2 border-b border-amber-200">Status</th>
+								<th className="text-left p-2 border-b border-amber-200">Actions</th>
+							</tr>
+						</thead>
+						<tbody>
+							{companyList.map(l => (
+								<tr key={l._id}>
+									<td className="p-2 border-t border-amber-100">{l.userId}</td>
+									<td className="p-2 border-t border-amber-100">{l.startDate} → {l.endDate}</td>
+									<td className="p-2 border-t border-amber-100">{l.reason}</td>
+									<td className="p-2 border-t border-amber-100">{l.status}</td>
+									<td className="p-2 border-t border-amber-100 space-x-2">
+										<button onClick={()=>act(l._id,'approve')} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-1">Approve</button>
+										<button onClick={()=>act(l._id,'reject')} className="border border-amber-300 text-amber-900 rounded px-3 py-1">Reject</button>
+									</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+				</div>
+			)}
 		</div>
 	);
 }
