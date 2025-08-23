@@ -1,0 +1,11 @@
+import { Router } from 'express';
+import { listUsers, createUser } from '../controllers/user.controller.js';
+import { requireAuth, requireRoles } from '../middleware/auth.js';
+
+const r = Router();
+
+r.use(requireAuth);
+r.get('/', requireRoles('SUPER_ADMIN', 'COMPANY_ADMIN'), listUsers);
+r.post('/', requireRoles('SUPER_ADMIN', 'COMPANY_ADMIN'), createUser);
+
+export default r;
