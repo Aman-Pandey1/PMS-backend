@@ -5,6 +5,10 @@ export default function CompaniesPage() {
 	const [items, setItems] = useState([]);
 	const [name, setName] = useState('');
 	const [code, setCode] = useState('');
+	const [formStatus, setFormStatus] = useState('ACTIVE');
+	const [formAddress, setFormAddress] = useState('');
+	const [formDesc, setFormDesc] = useState('');
+	const [formErrors, setFormErrors] = useState({});
 
 	useEffect(() => {
 		listCompanies().then(setItems).catch(console.error);
@@ -12,10 +16,19 @@ export default function CompaniesPage() {
 
 	async function add(e) {
 		e.preventDefault();
-		const c = await createCompany({ name, code });
+		const errs = {};
+		if (!name.trim()) errs.name = 'Name required';
+		if (!code.trim()) errs.code = 'Code required';
+		setFormErrors(errs);
+		if (Object.keys(errs).length) return;
+		const payload = { name, code, status: formStatus, address: { line1: formAddress }, description: formDesc };
+		const c = await createCompany(payload);
 		setItems((prev) => [c, ...prev]);
 		setName('');
 		setCode('');
+		setFormStatus('ACTIVE');
+		setFormAddress('');
+		setFormDesc('');
 	}
 
 	return (
@@ -32,18 +45,18 @@ export default function CompaniesPage() {
 				</div>
 				<div className="md:col-span-1">
 					<label className="block text-sm mb-1 text-amber-900">Status</label>
-					<select className="w-full border border-amber-300 rounded px-3 py-2" defaultValue="ACTIVE">
+					<select className="w-full border border-amber-300 rounded px-3 py-2" value={formStatus} onChange={(e)=>setFormStatus(e.target.value)}>
 						<option value="ACTIVE">ACTIVE</option>
 						<option value="INACTIVE">INACTIVE</option>
 					</select>
 				</div>
 				<div className="md:col-span-3">
 					<label className="block text-sm mb-1 text-amber-900">Address</label>
-					<input className="w-full border border-amber-300 rounded px-3 py-2" placeholder="Line 1, City, State, ZIP" />
+					<input className="w-full border border-amber-300 rounded px-3 py-2" placeholder="Line 1, City, State, ZIP" value={formAddress} onChange={(e)=>setFormAddress(e.target.value)} />
 				</div>
 				<div className="md:col-span-3">
 					<label className="block text-sm mb-1 text-amber-900">Description</label>
-					<textarea className="w-full border border-amber-300 rounded px-3 py-2" placeholder="Short description" />
+					<textarea className="w-full border border-amber-300 rounded px-3 py-2" placeholder="Short description" value={formDesc} onChange={(e)=>setFormDesc(e.target.value)} />
 				</div>
 				<div className="md:col-span-3 flex justify-end">
 					<button className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">Create Company</button>
