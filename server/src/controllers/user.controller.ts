@@ -3,8 +3,11 @@ import argon2 from 'argon2';
 import { User } from '../models/User.js';
 
 export async function listUsers(req: Request, res: Response) {
-	const { companyId } = req.params;
-	const items = await User.find(companyId ? { companyId } : {}).select('-passwordHash').sort({ createdAt: -1 });
+	const { companyId } = req.params as any;
+	const isSuper = req.user?.role === 'SUPER_ADMIN';
+	const scopeCompanyId = companyId || (!isSuper ? req.user?.companyId : undefined);
+	const where = scopeCompanyId ? { companyId: scopeCompanyId } : {};
+	const items = await User.find(where).select('-passwordHash').sort({ createdAt: -1 });
 	res.json({ items });
 }
 

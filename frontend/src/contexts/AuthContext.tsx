@@ -12,7 +12,7 @@ export type AuthUser = {
 
 interface AuthContextShape {
   user: AuthUser | null;
-  login: (user: AuthUser) => void;
+  loginWithPassword: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -33,9 +33,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const value = useMemo<AuthContextShape>(() => ({
     user,
-    login: (u) => {
-      setUser(u);
-      localStorage.setItem('auth:user', JSON.stringify(u));
+    loginWithPassword: async (email: string, password: string) => {
+      const { user: u, token } = await (await import('../services/auth')).loginRequest(email, password);
+      const authUser: AuthUser = { id: u.id, name: u.fullName, role: u.role, companyId: u.companyId, token };
+      setUser(authUser);
+      localStorage.setItem('auth:user', JSON.stringify(authUser));
     },
     logout: () => {
       setUser(null);

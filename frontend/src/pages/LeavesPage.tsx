@@ -5,9 +5,10 @@ export default function LeavesPage() {
   const [end, setEnd] = useState('');
   const [reason, setReason] = useState('');
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    alert(`Leave requested from ${start} to ${end}: ${reason}`);
+    await (await import('../services/leaves')).requestLeave({ startDate: start, endDate: end, reason });
+    setStart(''); setEnd(''); setReason('');
   }
 
   return (

@@ -7,9 +7,10 @@ export default function DocumentsPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [type, setType] = useState<DocType>('AADHAAR');
 
-  function upload() {
+  async function upload() {
     const f = fileRef.current?.files?.[0];
     if (!f) return;
+    await (await import('../services/documents')).uploadUserDocument('me', { type, name: f.name });
     setDocs((d) => [...d, { type, name: f.name }]);
     if (fileRef.current) fileRef.current.value = '';
   }

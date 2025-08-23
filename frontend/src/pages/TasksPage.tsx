@@ -3,13 +3,21 @@ import { useState } from 'react';
 type Task = { id: string; description: string; status: 'OPEN'|'IN_PROGRESS'|'DONE'; };
 
 export default function TasksPage() {
-  const [tasks, setTasks] = useState<Task[]>([
-    { id: '1', description: 'Prepare report', status: 'OPEN' },
-    { id: '2', description: 'Client meeting', status: 'IN_PROGRESS' },
-  ]);
+  const [tasks, setTasks] = useState<Task[]>([]);
 
-  function advance(id: string) {
-    setTasks((ts) => ts.map(t => t.id === id ? { ...t, status: t.status === 'OPEN' ? 'IN_PROGRESS' : 'DONE' } : t));
+  useEffect(() => {
+    (async () => {
+      const items = await (await import('../services/tasks')).tasksAssignedToMe();
+      setTasks(items.map((i: any) => ({ id: i._id || i.id, description: i.description, status: i.status })));
+    })();
+  }, []);
+
+  async function advance(id: string) {
+    const t = tasks.find((x) => x.id === id);
+    if (!t) return;
+    const next = t.status === 'OPEN' ? 'IN_PROGRESS' : 'DONE';
+    await (await import('../services/tasks')).updateTask(id, { status: next });
+    setTasks((ts) => ts.map((row) => row.id === id ? { ...row, status: next } : row));
   }
 
   return (
