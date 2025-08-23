@@ -5,3 +5,8 @@ export async function listUsers(companyId) {
 	const { data } = await api.get(`/users${qs}`);
 	return data.items.map((u) => ({ id: u._id || u.id, email: u.email, fullName: u.fullName, role: u.role, companyId: u.companyId, managerId: u.managerId }));
 }
+
+export async function mySubordinates() {
+	const { data } = await api.get('/users/my-subordinates');
+	return data.items.map((u) => ({ id: u._id || u.id, fullName: u.fullName, email: u.email }));
+}

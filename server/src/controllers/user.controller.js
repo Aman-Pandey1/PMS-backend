@@ -27,3 +27,10 @@ export async function createUser(req, res) {
 	const user = await User.create({ email, fullName, passwordHash, role, companyId, managerId, ancestors, depth });
 	res.status(201).json({ id: user.id, email: user.email, fullName: user.fullName, role: user.role, companyId: user.companyId, managerId: user.managerId });
 }
+
+export async function mySubordinates(req, res) {
+	const managerId = req.user.uid;
+	const companyId = req.user.companyId;
+	const items = await User.find({ managerId, companyId }).select('-passwordHash').sort({ fullName: 1 });
+	res.json({ items });
+}
