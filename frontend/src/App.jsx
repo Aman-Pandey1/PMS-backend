@@ -12,6 +12,7 @@ import DocumentsPage from './pages/DocumentsPage.jsx';
 import PayrollPage from './pages/PayrollPage.jsx';
 import NotificationsPage from './pages/NotificationsPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
+import AttendanceCompany from './pages/AttendanceCompany.jsx';
 
 export default function App() {
 	return (
@@ -28,7 +29,8 @@ export default function App() {
 				<Route index element={<DashboardPage />} />
 				<Route path="companies" element={<ProtectedRoute roles={['SUPER_ADMIN']}><CompaniesPage /></ProtectedRoute>} />
 				<Route path="employees" element={<EmployeesPage />} />
-				<Route path="attendance" element={<AttendancePage />} />
+				        <Route path="attendance" element={<AttendancePage />} />
+        <Route path="attendance/company" element={<ProtectedRoute roles={["COMPANY_ADMIN","SUPER_ADMIN","SUPERVISOR"]}><AttendanceCompany /></ProtectedRoute>} />
 				<Route path="leaves" element={<LeavesPage />} />
 				<Route path="tasks" element={<TasksPage />} />
 				<Route path="documents" element={<DocumentsPage />} />

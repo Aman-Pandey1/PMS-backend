@@ -54,3 +54,19 @@ export async function myAttendance(_req, res) {
 	const items = await Attendance.find({ userId }).sort({ date: -1 }).limit(30);
 	res.json({ items });
 }
+
+export async function companyAttendance(req, res) {
+	const isSuper = req.user.role === 'SUPER_ADMIN';
+	const companyIdParam = req.query.companyId;
+	const companyId = isSuper && companyIdParam ? companyIdParam : req.user.companyId;
+	const { start, end, userId } = req.query || {};
+	const where = { companyId };
+	if (userId) where.userId = userId;
+	if (start || end) {
+		where.date = {};
+		if (start) where.date.$gte = String(start);
+		if (end) where.date.$lte = String(end);
+	}
+	const items = await Attendance.find(where).sort({ date: -1 }).limit(500);
+	res.json({ items });
+}
