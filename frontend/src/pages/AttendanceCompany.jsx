@@ -47,7 +47,7 @@ export default function AttendanceCompany() {
 					<tbody>
 						{items.map((r) => (
 							<tr key={r._id}>
-								<td className="p-2 border-t border-amber-100">{r.userId}</td>
+								<td className="p-2 border-t border-amber-100">{r.user?.fullName || r.userId}</td>
 								<td className="p-2 border-t border-amber-100">{r.date}</td>
 								<td className="p-2 border-t border-amber-100">{r.checkInAt ? new Date(r.checkInAt).toLocaleString() : '-'}</td>
 								<td className="p-2 border-t border-amber-100">{r.checkOutAt ? new Date(r.checkOutAt).toLocaleString() : '-'}</td>

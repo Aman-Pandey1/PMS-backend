@@ -56,6 +56,7 @@ export async function myAttendance(_req, res) {
 }
 
 export async function companyAttendance(req, res) {
+	if (!['SUPER_ADMIN','COMPANY_ADMIN','SUPERVISOR'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
 	const isSuper = req.user.role === 'SUPER_ADMIN';
 	const companyIdParam = req.query.companyId;
 	const companyId = isSuper && companyIdParam ? companyIdParam : req.user.companyId;
@@ -67,6 +68,10 @@ export async function companyAttendance(req, res) {
 		if (start) where.date.$gte = String(start);
 		if (end) where.date.$lte = String(end);
 	}
-	const items = await Attendance.find(where).sort({ date: -1 }).limit(500);
-	res.json({ items });
+	const items = await Attendance.find(where).sort({ date: -1 }).limit(500).lean();
+	const userIds = [...new Set(items.map(i => String(i.userId)))];
+	const users = await User.find({ _id: { $in: userIds } }).select('fullName email').lean();
+	const map = new Map(users.map(u => [String(u._id), u]));
+	const withUsers = items.map(i => ({ ...i, user: map.get(String(i.userId)) || null }));
+	res.json({ items: withUsers });
 }
