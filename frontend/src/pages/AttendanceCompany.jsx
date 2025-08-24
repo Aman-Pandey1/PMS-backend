@@ -11,6 +11,8 @@ export default function AttendanceCompany() {
     const [errMsg, setErrMsg] = useState('');
     const [companies, setCompanies] = useState([]);
     const [companyId, setCompanyId] = useState('');
+    const [employees, setEmployees] = useState([]);
+    const [userId, setUserId] = useState('');
 
 	async function load() {
 		try {
@@ -20,6 +22,7 @@ export default function AttendanceCompany() {
 			if (start) params.start = start;
 			if (end) params.end = end;
             if (user?.role === 'SUPER_ADMIN' && companyId) params.companyId = companyId;
+            if (userId) params.userId = userId;
 			setItems(await getCompanyAttendance(params));
 		} catch (e) {
 			setErrMsg(e?.response?.data?.error || 'Failed to load attendance');
@@ -28,6 +31,30 @@ export default function AttendanceCompany() {
 
 	useEffect(() => { load().catch(()=>{}); }, []);
     useEffect(() => { (async ()=>{ if (user?.role === 'SUPER_ADMIN') { try { const { listCompanies } = await import('../services/companies.js'); setCompanies(await listCompanies()); } catch {} } })(); }, [user?.role]);
+
+    // Load employees list for filters
+    useEffect(() => {
+        (async () => {
+            try {
+                if (user?.role === 'COMPANY_ADMIN') {
+                    const { listUsers } = await import('../services/users.js');
+                    setEmployees(await listUsers());
+                } else if (user?.role === 'SUPER_ADMIN' && companyId) {
+                    const { listUsers } = await import('../services/users.js');
+                    setEmployees(await listUsers(companyId));
+                } else if (user?.role === 'SUPERVISOR') {
+                    // derive from current items (unique users seen)
+                    const seen = new Map();
+                    for (const r of items) {
+                        const id = r.user?._id || r.user?.id || r.userId;
+                        const name = r.user?.fullName || String(r.userId).slice(-6);
+                        if (id && !seen.has(id)) seen.set(id, { id, fullName: name });
+                    }
+                    setEmployees(Array.from(seen.values()));
+                }
+            } catch {}
+        })();
+    }, [user?.role, companyId, items]);
 
     useEffect(() => {
         (async () => {
@@ -61,6 +88,15 @@ export default function AttendanceCompany() {
                         <select value={companyId} onChange={(e)=>setCompanyId(e.target.value)} className="border border-amber-300 rounded px-3 py-2">
                             <option value="">Select company</option>
                             {companies.map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
+                        </select>
+                    </div>
+                )}
+                {(user?.role === 'COMPANY_ADMIN' || (user?.role === 'SUPER_ADMIN' && companyId) || user?.role === 'SUPERVISOR') && (
+                    <div>
+                        <label className="block text-sm text-amber-900">Employee</label>
+                        <select value={userId} onChange={(e)=>setUserId(e.target.value)} className="border border-amber-300 rounded px-3 py-2">
+                            <option value="">All employees</option>
+                            {employees.map(u => <option key={u.id} value={u.id}>{u.fullName || u.email || u.id}</option>)}
                         </select>
                     </div>
                 )}
