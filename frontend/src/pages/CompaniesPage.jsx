@@ -21,6 +21,9 @@ export default function CompaniesPage() {
 	const [formErrors, setFormErrors] = useState({});
     const [msg, setMsg] = useState('');
     const [errMsg, setErrMsg] = useState('');
+    const [editModal, setEditModal] = useState(null);
+    const [editName, setEditName] = useState('');
+    const [editStatus, setEditStatus] = useState('ACTIVE');
 
 	useEffect(() => {
 		listCompanies().then(setItems).catch(console.error);
@@ -125,7 +128,7 @@ export default function CompaniesPage() {
 						<div className="flex items-center gap-2">
 							<label className="text-sm">Enabled</label>
 							<input type="checkbox" checked={c.status !== 'INACTIVE'} onChange={async (e)=>{ const updated = await toggleCompany(c.id, e.target.checked); setItems(prev=>prev.map(x=>x.id===c.id?updated:x)); }} />
-							<button onClick={async ()=>{ const name = prompt('New name', c.name) || c.name; const updated = await updateCompany(c.id, { name }); setItems(prev=>prev.map(x=>x.id===c.id?updated:x)); }} className="border border-amber-300 rounded px-3 py-1">Edit</button>
+							<button onClick={()=>{ setEditModal(c); setEditName(c.name); setEditStatus(c.status||'ACTIVE'); }} className="border border-amber-300 rounded px-3 py-1">Edit</button>
 							<button onClick={async ()=>{ if (!confirm('Delete company?')) return; await deleteCompany(c.id); setItems(prev=>prev.filter(x=>x.id!==c.id)); }} className="text-white bg-red-600 rounded px-3 py-1">Delete</button>
 							{c.logo && <img alt="logo" src={c.logo} className="h-8" />}
 						</div>
@@ -164,6 +167,27 @@ export default function CompaniesPage() {
 					)}
 				</div>
 			)}
+
+            {editModal && (
+                <div className="fixed inset-0 bg-black/40 grid place-items-center p-4">
+                    <div className="bg-white rounded-lg border border-amber-300 max-w-sm w-full p-4">
+                        <div className="font-medium text-amber-900 mb-2">Edit company</div>
+                        <div className="grid gap-2">
+                            <label className="text-sm text-amber-900">Name</label>
+                            <input className="border border-amber-300 rounded px-3 py-2" value={editName} onChange={(e)=>setEditName(e.target.value)} />
+                            <label className="text-sm text-amber-900">Status</label>
+                            <select className="border border-amber-300 rounded px-3 py-2" value={editStatus} onChange={(e)=>setEditStatus(e.target.value)}>
+                                <option value="ACTIVE">ACTIVE</option>
+                                <option value="INACTIVE">INACTIVE</option>
+                            </select>
+                        </div>
+                        <div className="mt-3 flex justify-end gap-2">
+                            <button onClick={()=>setEditModal(null)} className="border border-amber-300 rounded px-3 py-1">Cancel</button>
+                            <button onClick={async ()=>{ const updated = await updateCompany(editModal.id, { name: editName, status: editStatus }); setItems(prev=>prev.map(x=>x.id===editModal.id?updated:x)); setEditModal(null); }} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-1">Save</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 		</div>
 	);
 }

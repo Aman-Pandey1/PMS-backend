@@ -59,7 +59,10 @@ export async function myLeaves(req, res) {
 
 export async function companyLeaves(req, res) {
 	if (!['SUPERVISOR','COMPANY_ADMIN','SUPER_ADMIN'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
-	const companyId = req.user.companyId;
+	const isSuper = req.user.role === 'SUPER_ADMIN';
+	const companyIdParam = req.query.companyId;
+	const companyId = isSuper && companyIdParam ? companyIdParam : req.user.companyId;
+	if (isSuper && !companyId) return res.status(400).json({ error: 'companyId required' });
 	const { status } = req.query || {};
 	const where = { companyId };
 	if (status) where.status = status;
