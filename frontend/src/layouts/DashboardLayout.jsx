@@ -21,7 +21,7 @@ export default function DashboardLayout() {
 					{(user?.role === 'COMPANY_ADMIN' || user?.role === 'SUPER_ADMIN') && (
 						<>
 							<Section title="Company" />
-							<SidebarLink to="/employees" label="Employees" />
+							<SidebarLink to="/employees" label={user?.role === 'SUPER_ADMIN' ? 'All Employees' : 'Employees'} />
 							<SidebarLink to="/payroll" label="Payroll" />
 						</>
 					)}

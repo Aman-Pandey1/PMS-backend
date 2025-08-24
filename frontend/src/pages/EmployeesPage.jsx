@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react';
 import { listUsers, mySubordinates, createUser } from '../services/users.js';
+import { listCompanies } from '../services/companies.js';
+import { useAuth } from '../contexts/AuthContext.jsx';
 
 export default function EmployeesPage() {
+    const { user } = useAuth();
 	const [items, setItems] = useState([]);
 	const [managers, setManagers] = useState([]);
+    const [companies, setCompanies] = useState([]);
+    const [selectedCompanyId, setSelectedCompanyId] = useState('');
 
 	const [email, setEmail] = useState('');
 	const [fullName, setFullName] = useState('');
@@ -14,11 +19,23 @@ export default function EmployeesPage() {
 
 	useEffect(() => {
 		(async () => {
-			listUsers().then(setItems).catch(console.error);
+			if (user?.role === 'SUPER_ADMIN') {
+                listCompanies().then(setCompanies).catch(()=>{});
+            }
+			const load = async () => {
+                if (user?.role === 'SUPER_ADMIN' && selectedCompanyId) {
+                    const data = await listUsers(selectedCompanyId);
+                    setItems(data);
+                } else {
+                    const data = await listUsers();
+                    setItems(data);
+                }
+            };
+            load().catch(console.error);
 			// For simplicity, use mySubordinates as potential managers (or extend with listUsers by role SUPERVISOR)
 			mySubordinates().then((subs) => setManagers(subs)).catch(()=>{});
 		})();
-	}, []);
+	}, [user?.role, selectedCompanyId]);
 
 	async function onCreate(e) {
 		e.preventDefault();
@@ -40,6 +57,15 @@ export default function EmployeesPage() {
 	return (
 		<div className="space-y-6">
 			<h1 className="text-2xl font-bold">Employees</h1>
+            {user?.role === 'SUPER_ADMIN' && (
+                <div className="bg-white border border-amber-300 rounded p-4">
+                    <div className="text-amber-900 font-medium mb-2">Filter by company</div>
+                    <select value={selectedCompanyId} onChange={(e)=>setSelectedCompanyId(e.target.value)} className="border border-amber-300 rounded px-3 py-2">
+                        <option value="">All (select a company)</option>
+                        {companies.map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
+                    </select>
+                </div>
+            )}
 			<div className="bg-white border border-amber-300 rounded p-4">
 				<div className="text-amber-900 font-medium mb-3">Create Employee</div>
 				<form onSubmit={onCreate} className="grid md:grid-cols-5 gap-3">
