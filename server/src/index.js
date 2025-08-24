@@ -7,6 +7,8 @@ import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import { connectToDatabase } from './config/db.js';
 import { env } from './config/env.js';
+import fs from 'fs';
+import path from 'path';
 import apiRouter from './routes/index.js';
 
 const app = express();
@@ -26,6 +28,11 @@ app.use((req, _res, next) => {
 	console.log(`[REQ] ${req.method} ${req.path}`, { query: req.query, body: req.body });
 	next();
 });
+
+// static uploads
+const uploadDir = path.resolve(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+app.use('/uploads', express.static(uploadDir));
 
 app.use('/api', apiRouter);
 

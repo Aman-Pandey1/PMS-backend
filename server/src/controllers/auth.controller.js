@@ -1,5 +1,6 @@
 import argon2 from 'argon2';
 import { User } from '../models/User.js';
+import { Company } from '../models/Company.js';
 import { signJwt } from '../utils/jwt.js';
 
 export async function login(req, res) {
@@ -17,6 +18,10 @@ export async function login(req, res) {
 	}
 	const ok = await argon2.verify(user.passwordHash, password);
 	if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
+	if (user.role !== 'SUPER_ADMIN' && user.companyId) {
+		const c = await Company.findById(user.companyId).select('status name');
+		if (c && c.status === 'INACTIVE') return res.status(403).json({ error: 'Company is disabled. Contact administrator.' });
+	}
 	const token = signJwt({ uid: String(user._id), role: user.role, companyId: user.companyId ? String(user.companyId) : undefined });
 	return res.json({ user: { id: user.id, email: user.email, fullName: user.fullName, role: user.role, companyId: user.companyId }, token });
 }

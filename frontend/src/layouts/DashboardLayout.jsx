@@ -1,10 +1,22 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import clsx from 'clsx';
 
 export default function DashboardLayout() {
 	const { user, logout } = useAuth();
+	const [companyName, setCompanyName] = useState('');
+	useEffect(() => {
+		(async () => {
+			try {
+				if (user?.companyId && user?.role !== 'SUPER_ADMIN') {
+					const { getMyCompany } = await import('../services/companies.js');
+					const c = await getMyCompany();
+					setCompanyName(c.name || '');
+				}
+			} catch {}
+		})();
+	}, [user?.companyId, user?.role]);
 	return (
 		<div className="min-h-screen grid grid-cols-[260px_1fr] bg-zinc-50">
 			<aside className="bg-amber-700 text-white p-4">
@@ -43,7 +55,7 @@ export default function DashboardLayout() {
 				</nav>
 				<div className="mt-10 text-sm opacity-90 bg-amber-800/50 rounded p-3">
 					<div className="font-medium">{user?.name}</div>
-					<div className="opacity-80">{user?.role}{user?.companyId ? ` · ${user.companyId}` : ''}</div>
+					<div className="opacity-80">{user?.role}{user?.companyId ? ` · ${companyName || user.companyId}` : ''}</div>
 					<button onClick={logout} className="mt-2 text-sm underline">Logout</button>
 				</div>
 			</aside>
