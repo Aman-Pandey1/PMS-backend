@@ -1,8 +1,13 @@
 import { useEffect, useState } from 'react';
 import { createCompany, listCompanies } from '../services/companies.js';
+import { listUsers } from '../services/users.js';
+import { useAuth } from '../contexts/AuthContext.jsx';
 
 export default function CompaniesPage() {
+	const { user } = useAuth();
 	const [items, setItems] = useState([]);
+	const [selectedCompanyId, setSelectedCompanyId] = useState('');
+	const [companyEmployees, setCompanyEmployees] = useState([]);
 	const [name, setName] = useState('');
 	const [code, setCode] = useState('');
 	const [formStatus, setFormStatus] = useState('ACTIVE');
@@ -17,6 +22,17 @@ export default function CompaniesPage() {
 	useEffect(() => {
 		listCompanies().then(setItems).catch(console.error);
 	}, []);
+
+	useEffect(() => {
+		(async () => {
+			if (user?.role !== 'SUPER_ADMIN') return;
+			if (!selectedCompanyId) { setCompanyEmployees([]); return; }
+			try {
+				const employees = await listUsers(selectedCompanyId);
+				setCompanyEmployees(employees);
+			} catch (e) { setCompanyEmployees([]); }
+		})();
+	}, [selectedCompanyId, user?.role]);
 
 	async function add(e) {
 		e.preventDefault();
@@ -96,6 +112,38 @@ export default function CompaniesPage() {
 					</div>
 				))}
 			</div>
+
+			{user?.role === 'SUPER_ADMIN' && (
+				<div className="mt-6 bg-white border border-amber-300 rounded p-4">
+					<div className="font-medium text-amber-900 mb-2">View employees of a company</div>
+					<select value={selectedCompanyId} onChange={(e)=>setSelectedCompanyId(e.target.value)} className="border border-amber-300 rounded px-3 py-2 mb-3">
+						<option value="">Select company</option>
+						{items.map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
+					</select>
+					{selectedCompanyId && (
+						<div className="overflow-x-auto">
+							<table className="min-w-[700px] w-full">
+								<thead>
+									<tr className="bg-amber-50 text-amber-900">
+										<th className="text-left p-2 border-b border-amber-200">Name</th>
+										<th className="text-left p-2 border-b border-amber-200">Email</th>
+										<th className="text-left p-2 border-b border-amber-200">Role</th>
+									</tr>
+								</thead>
+								<tbody>
+									{companyEmployees.map(u => (
+										<tr key={u.id}>
+											<td className="p-2 border-t border-amber-100">{u.fullName}</td>
+											<td className="p-2 border-t border-amber-100">{u.email}</td>
+											<td className="p-2 border-t border-amber-100">{u.role}</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
+					)}
+				</div>
+			)}
 		</div>
 	);
 }

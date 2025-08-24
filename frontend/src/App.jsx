@@ -29,7 +29,7 @@ export default function App() {
 			>
 				<Route index element={<DashboardPage />} />
 				<Route path="companies" element={<ProtectedRoute roles={['SUPER_ADMIN']}><CompaniesPage /></ProtectedRoute>} />
-				<Route path="employees" element={<EmployeesPage />} />
+				<Route path="employees" element={<ProtectedRoute roles={['COMPANY_ADMIN','SUPER_ADMIN']}><EmployeesPage /></ProtectedRoute>} />
 				        <Route path="attendance" element={<AttendancePage />} />
         <Route path="attendance/company" element={<ProtectedRoute roles={["COMPANY_ADMIN","SUPER_ADMIN","SUPERVISOR"]}><AttendanceCompany /></ProtectedRoute>} />
 				<Route path="leaves" element={<ProtectedRoute roles={['SUPER_ADMIN','SUPERVISOR']}><LeavesPage /></ProtectedRoute>} />
