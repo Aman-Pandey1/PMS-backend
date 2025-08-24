@@ -2,12 +2,18 @@ import argon2 from 'argon2';
 import { User } from '../models/User.js';
 
 export async function listUsers(req, res) {
-	const { companyId, managerId } = req.query || {};
+	const { companyId, managerId, query } = req.query || {};
 	const isSuper = req.user?.role === 'SUPER_ADMIN';
 	const scopeCompanyId = companyId || (!isSuper ? req.user?.companyId : undefined);
 	const where = {};
 	if (scopeCompanyId) where.companyId = scopeCompanyId;
 	if (managerId) where.managerId = managerId;
+	if (query) {
+		where.$or = [
+			{ fullName: { $regex: String(query), $options: 'i' } },
+			{ email: { $regex: String(query), $options: 'i' } },
+		];
+	}
 	const items = await User.find(where).select('-passwordHash').sort({ createdAt: -1 });
 	res.json({ items });
 }
@@ -15,6 +21,15 @@ export async function listUsers(req, res) {
 export async function createUser(req, res) {
 	const { email, fullName, password, role, companyId, managerId } = req.body || {};
 	if (!email || !fullName || !password || !role) return res.status(400).json({ error: 'missing fields' });
+	let targetCompanyId = companyId;
+	if (!targetCompanyId && req.user?.companyId) targetCompanyId = req.user.companyId;
+	if (req.user?.role === 'COMPANY_ADMIN') {
+		// Ensure admins only create within their company
+		if (targetCompanyId && String(targetCompanyId) !== String(req.user.companyId)) {
+			return res.status(403).json({ error: 'Cannot create user outside your company' });
+		}
+		targetCompanyId = req.user.companyId;
+	}
 	const passwordHash = await argon2.hash(password);
 	const ancestors = [];
 	let depth = 0;
@@ -24,7 +39,7 @@ export async function createUser(req, res) {
 		ancestors.push(...manager.ancestors, manager._id);
 		depth = manager.depth + 1;
 	}
-	const user = await User.create({ email, fullName, passwordHash, role, companyId, managerId, ancestors, depth });
+	const user = await User.create({ email, fullName, passwordHash, role, companyId: targetCompanyId, managerId, ancestors, depth });
 	res.status(201).json({ id: user.id, email: user.email, fullName: user.fullName, role: user.role, companyId: user.companyId, managerId: user.managerId });
 }
 
