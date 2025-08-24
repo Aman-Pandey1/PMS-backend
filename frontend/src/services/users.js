@@ -15,3 +15,8 @@ export async function createUser(input) {
 	const { data } = await api.post('/users', input);
 	return data;
 }
+
+export async function searchUsers(q) {
+	const { data } = await api.get(`/users?query=${encodeURIComponent(q)}`);
+	return data.items.map((u) => ({ id: u._id || u.id, fullName: u.fullName, email: u.email }));
+}
