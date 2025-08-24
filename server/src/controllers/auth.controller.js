@@ -18,6 +18,7 @@ export async function login(req, res) {
 	}
 	const ok = await argon2.verify(user.passwordHash, password);
 	if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
+	if (user.role !== 'SUPER_ADMIN' && user.isActive === false) return res.status(403).json({ error: 'User is inactive. Contact administrator.' });
 	if (user.role !== 'SUPER_ADMIN' && user.companyId) {
 		const c = await Company.findById(user.companyId).select('status name');
 		if (c && c.status === 'INACTIVE') return res.status(403).json({ error: 'Company is disabled. Contact administrator.' });
