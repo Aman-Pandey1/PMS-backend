@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import express from 'express';
 import { UserDocument } from '../models/Document.js';
 
 export async function listUserDocuments(req, res) {
