@@ -63,6 +63,7 @@ export async function companyAttendance(req, res) {
 	const isSuper = req.user.role === 'SUPER_ADMIN';
 	const companyIdParam = req.query.companyId;
 	const companyId = isSuper && companyIdParam ? companyIdParam : req.user.companyId;
+	if (isSuper && !companyId) return res.status(400).json({ error: 'companyId required' });
 	const { start, end, userId } = req.query || {};
 	const where = { companyId };
 	if (userId) where.userId = userId;

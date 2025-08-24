@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { listUsers, mySubordinates, createUser } from '../services/users.js';
+import { listUsers, mySubordinates, createUser, setUserActive, adminSetPassword } from '../services/users.js';
 import { listCompanies } from '../services/companies.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 
@@ -16,9 +16,12 @@ export default function EmployeesPage() {
 	const [role, setRole] = useState('EMPLOYEE');
 	const [managerId, setManagerId] = useState('');
 	const [errors, setErrors] = useState({});
+    const [msg, setMsg] = useState('');
+    const [errMsg, setErrMsg] = useState('');
 
 	useEffect(() => {
 		(async () => {
+            setMsg(''); setErrMsg('');
 			if (user?.role === 'SUPER_ADMIN') {
                 listCompanies().then(setCompanies).catch(()=>{});
             }
@@ -39,6 +42,7 @@ export default function EmployeesPage() {
 
 	async function onCreate(e) {
 		e.preventDefault();
+        setMsg(''); setErrMsg('');
 		const errs = {};
 		if (!email.includes('@')) errs.email = 'Valid email required';
 		if (fullName.trim().length < 3) errs.fullName = 'Full name min 3 chars';
@@ -49,14 +53,36 @@ export default function EmployeesPage() {
 			const created = await createUser({ email, fullName, password, role, managerId: managerId || undefined });
 			setItems((prev) => [created, ...prev]);
 			setEmail(''); setFullName(''); setPassword(''); setRole('EMPLOYEE'); setManagerId(''); setErrors({});
+            setMsg('User created');
 		} catch (e) {
-			alert('Failed to create');
+			setErrMsg(e?.response?.data?.error || 'Failed to create');
 		}
 	}
+
+    async function onToggleActive(u) {
+        setMsg(''); setErrMsg('');
+        try {
+            const updated = await setUserActive(u.id, !u.isActive);
+            setItems(prev => prev.map(x => x.id === u.id ? { ...x, isActive: updated.isActive } : x));
+            setMsg(updated.isActive ? 'User activated' : 'User deactivated');
+        } catch (e) { setErrMsg(e?.response?.data?.error || 'Failed to update'); }
+    }
+
+    async function onSetPassword(u) {
+        const pwd = prompt(`Set new password for ${u.fullName}`);
+        if (!pwd) return;
+        setMsg(''); setErrMsg('');
+        try {
+            await adminSetPassword(u.id, pwd);
+            setMsg('Password updated');
+        } catch (e) { setErrMsg(e?.response?.data?.error || 'Failed to update password'); }
+    }
 
 	return (
 		<div className="space-y-6">
 			<h1 className="text-2xl font-bold">Employees</h1>
+            {msg && <div className="text-green-800 bg-green-50 border border-green-200 rounded p-2">{msg}</div>}
+            {errMsg && <div className="text-red-800 bg-red-50 border border-red-200 rounded p-2">{errMsg}</div>}
             {user?.role === 'SUPER_ADMIN' && (
                 <div className="bg-white border border-amber-300 rounded p-4">
                     <div className="text-amber-900 font-medium mb-2">Filter by company</div>
@@ -106,13 +132,14 @@ export default function EmployeesPage() {
 			</div>
 
 			<div className="overflow-x-auto bg-white border border-amber-300 rounded">
-				<table className="min-w-[700px] w-full">
+				<table className="min-w-[900px] w-full">
 					<thead>
 						<tr className="bg-amber-50 text-amber-900">
 							<th className="text-left p-2 border-b border-amber-200">Name</th>
 							<th className="text-left p-2 border-b border-amber-200">Email</th>
 							<th className="text-left p-2 border-b border-amber-200">Role</th>
-							<th className="text-left p-2 border-b border-amber-200">Manager</th>
+							<th className="text-left p-2 border-b border-amber-200">Active</th>
+							<th className="text-left p-2 border-b border-amber-200">Actions</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -121,7 +148,12 @@ export default function EmployeesPage() {
 								<td className="p-2 border-t border-amber-100">{u.fullName}</td>
 								<td className="p-2 border-t border-amber-100">{u.email}</td>
 								<td className="p-2 border-t border-amber-100">{u.role}</td>
-								<td className="p-2 border-t border-amber-100">{u.managerId || '-'}</td>
+								<td className="p-2 border-t border-amber-100">
+									<input type="checkbox" checked={u.isActive !== false} onChange={()=>onToggleActive(u)} />
+								</td>
+								<td className="p-2 border-t border-amber-100 space-x-2">
+									<button onClick={()=>onSetPassword(u)} className="border border-amber-300 rounded px-3 py-1">Set Password</button>
+								</td>
 							</tr>
 						))}
 					</tbody>
