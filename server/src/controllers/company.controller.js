@@ -6,12 +6,19 @@ export async function listCompanies(_req, res) {
 }
 
 export async function createCompany(req, res) {
-	const { name, code, status, address, description } = req.body || {};
+	const { name, code, status, address, description, logo, adminEmail, adminPassword, adminName } = req.body || {};
 	if (!name || !code) return res.status(400).json({ error: 'name and code required' });
 	const exists = await Company.findOne({ code });
 	if (exists) return res.status(409).json({ error: 'code already exists' });
-	const item = await Company.create({ name, code, status, address, description });
-	res.status(201).json(item);
+	const company = await Company.create({ name, code, status, address, description, logo });
+	let adminUser = null;
+	if (adminEmail && adminPassword) {
+		const argon2 = await import('argon2');
+		const passwordHash = await argon2.default.hash(adminPassword);
+		const { User } = await import('../models/User.js');
+		adminUser = await User.create({ email: adminEmail.trim(), passwordHash, fullName: adminName || `${name} Admin`, role: 'COMPANY_ADMIN', companyId: company._id });
+	}
+	res.status(201).json({ company, adminUser });
 }
 
 export async function getCompany(req, res) {
