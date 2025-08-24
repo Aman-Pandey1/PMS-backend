@@ -107,7 +107,7 @@ export default function LeavesPage() {
 						<tbody>
 							{companyList.map(l => (
 								<tr key={l._id}>
-									<td className="p-2 border-t border-amber-100">{l.userId}</td>
+									<td className="p-2 border-t border-amber-100">{l.user?.fullName || l.userId}</td>
 									<td className="p-2 border-t border-amber-100">{l.startDate} → {l.endDate}</td>
 									<td className="p-2 border-t border-amber-100">{l.reason}</td>
 									<td className="p-2 border-t border-amber-100">{l.status}</td>

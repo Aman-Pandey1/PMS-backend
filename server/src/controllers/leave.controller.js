@@ -59,6 +59,10 @@ export async function companyLeaves(req, res) {
 	const { status } = req.query || {};
 	const where = { companyId };
 	if (status) where.status = status;
-	const items = await LeaveRequest.find(where).sort({ createdAt: -1 });
+	const rows = await LeaveRequest.find(where).sort({ createdAt: -1 }).lean();
+	const userIds = [...new Set(rows.map(r => String(r.userId)))];
+	const users = await User.find({ _id: { $in: userIds } }).select('fullName email').lean();
+	const map = new Map(users.map(u => [String(u._id), u]));
+	const items = rows.map(r => ({ ...r, user: map.get(String(r.userId)) || null }));
 	res.json({ items });
 }
