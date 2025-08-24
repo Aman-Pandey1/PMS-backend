@@ -46,11 +46,22 @@ export async function getTask(req, res) {
 
 export async function addTaskUpdate(req, res) {
 	const { id } = req.params;
-	const { text } = req.body || {};
-	if (!text) return res.status(400).json({ error: 'text required' });
+	const { text, action, note, status, progress } = req.body || {};
+	if (!text && !action && !note && status === undefined && progress === undefined) {
+		return res.status(400).json({ error: 'Provide at least one of text, action, note, status, progress' });
+	}
 	const item = await Task.findById(id);
 	if (!item) return res.status(404).json({ error: 'Not found' });
-	item.updates.push({ by: req.user.uid, text, at: new Date() });
+	const update = { by: req.user.uid, at: new Date() };
+	if (text) update.text = text;
+	if (action) update.action = action;
+	if (note) update.note = note;
+	if (status) update.status = status;
+	if (typeof progress === 'number') update.progress = progress;
+	item.updates.push(update);
+	// Roll up status/progress if provided
+	if (status) item.status = status;
+	if (typeof progress === 'number') item.progress = Math.max(0, Math.min(100, progress));
 	await item.save();
 	res.json(item);
 }
