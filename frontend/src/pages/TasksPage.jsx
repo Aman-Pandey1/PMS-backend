@@ -3,9 +3,10 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 
 export default function TasksPage() {
 	const { user } = useAuth();
-	const [tab, setTab] = useState('assigned'); // 'assigned' | 'created'
+	const [tab, setTab] = useState('assigned'); // 'assigned' | 'created' | 'company'
 	const [tasksAssigned, setTasksAssigned] = useState([]);
 	const [tasksCreated, setTasksCreated] = useState([]);
+	const [companyTasks, setCompanyTasks] = useState([]);
 	const [subordinates, setSubordinates] = useState([]);
 	const [loading, setLoading] = useState(false);
 	const [selectedTask, setSelectedTask] = useState(null);
@@ -15,6 +16,7 @@ export default function TasksPage() {
 	const [updateStatus, setUpdateStatus] = useState('');
 	const [updateProgress, setUpdateProgress] = useState('');
 	const [filterStatus, setFilterStatus] = useState('');
+	const [projectQuery, setProjectQuery] = useState('');
 	const [msg, setMsg] = useState('');
 	const [errMsg, setErrMsg] = useState('');
 
@@ -81,10 +83,22 @@ export default function TasksPage() {
 	}
 
 	const currentTasks = useMemo(() => {
-		let base = tab === 'assigned' ? tasksAssigned : tasksCreated;
+		let base = tab === 'assigned' ? tasksAssigned : tab === 'created' ? tasksCreated : companyTasks;
 		if (filterStatus) base = base.filter(t => t.status === filterStatus);
 		return base;
-	}, [tab, tasksAssigned, tasksCreated, filterStatus]);
+	}, [tab, tasksAssigned, tasksCreated, companyTasks, filterStatus]);
+
+	async function searchCompanyTasks() {
+		try {
+			setLoading(true); setErrMsg('');
+			const { filterTasks } = await import('../services/tasks.js');
+			const items = await filterTasks({ projectName: projectQuery.trim() || undefined, status: filterStatus || undefined });
+			setCompanyTasks(items);
+			setTab('company');
+		} catch (e) {
+			setErrMsg(e?.response?.data?.error || 'Failed to load tasks');
+		} finally { setLoading(false); }
+	}
 
 	async function openTask(task) {
 		try {
@@ -115,6 +129,16 @@ export default function TasksPage() {
 			setErrMsg(e?.response?.data?.error || 'Failed to post update');
 			console.error(e);
 		}
+	}
+
+	function StatusChip({ value }) {
+		const styles = {
+			OPEN: 'bg-amber-100 text-amber-900',
+			IN_PROGRESS: 'bg-blue-100 text-blue-900',
+			BLOCKED: 'bg-red-100 text-red-900',
+			DONE: 'bg-green-100 text-green-900',
+		};
+		return <span className={`text-xs px-2 py-1 rounded ${styles[value] || 'bg-zinc-100 text-zinc-900'}`}>{value}</span>;
 	}
 
 	return (
@@ -176,7 +200,7 @@ export default function TasksPage() {
 				</div>
 			)}
 
-			{/* Filters */}
+			{/* Tabs and Filters */}
 			<div className="flex gap-2 items-center">
 				<div className="opacity-70 text-sm">Filter:</div>
 				<select value={filterStatus} onChange={(e)=>setFilterStatus(e.target.value)} className="border border-amber-300 rounded px-2 py-1">
@@ -186,6 +210,15 @@ export default function TasksPage() {
 					<option value="BLOCKED">BLOCKED</option>
 					<option value="DONE">DONE</option>
 				</select>
+				{(user?.role === 'COMPANY_ADMIN' || user?.role === 'SUPERVISOR' || user?.role === 'SUPER_ADMIN') && (
+					<>
+						<input value={projectQuery} onChange={(e)=>setProjectQuery(e.target.value)} placeholder="Search by project" className="border border-amber-300 rounded px-3 py-2" />
+						<button onClick={searchCompanyTasks} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-2">Search</button>
+						<button onClick={()=>setTab('company')} className={(tab==='company'?'bg-amber-700 text-white':'bg-white text-amber-900') + ' border border-amber-300 rounded px-3 py-2'}>Company</button>
+					</>
+				)}
+				<button onClick={()=>setTab('assigned')} className={(tab==='assigned'?'bg-amber-700 text-white':'bg-white text-amber-900') + ' border border-amber-300 rounded px-3 py-2'}>Assigned</button>
+				<button onClick={()=>setTab('created')} className={(tab==='created'?'bg-amber-700 text-white':'bg-white text-amber-900') + ' border border-amber-300 rounded px-3 py-2'}>Created</button>
 			</div>
 
 			{/* Table */}
@@ -207,7 +240,7 @@ export default function TasksPage() {
 							<tr key={t._id || t.id}>
 								<td className="p-2 border-t border-amber-100">{t.projectName || '-'}</td>
 								<td className="p-2 border-t border-amber-100">{t.assigneeId?.fullName || t.assigneeName || '-'}</td>
-								<td className="p-2 border-t border-amber-100">{t.status}</td>
+								<td className="p-2 border-t border-amber-100"><StatusChip value={t.status} /></td>
 								<td className="p-2 border-t border-amber-100">{t.priority}</td>
 								<td className="p-2 border-t border-amber-100">{t.deadline ? new Date(t.deadline).toLocaleDateString() : '-'}</td>
 								<td className="p-2 border-t border-amber-100">{t.progress ?? 0}%</td>
