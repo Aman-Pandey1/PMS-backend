@@ -75,6 +75,11 @@ export default function AttendanceCompany() {
 						</tr>
 					</thead>
 					<tbody>
+                        {items.length === 0 && (
+                            <tr>
+                                <td colSpan={7} className="p-4 text-center text-sm opacity-70">No attendance records for the selected period.</td>
+                            </tr>
+                        )}
 						{items.map((r) => (
 							<tr key={r._id}>
 								<td className="p-2 border-t border-amber-100">{r.user?.fullName || r.userId}</td>
