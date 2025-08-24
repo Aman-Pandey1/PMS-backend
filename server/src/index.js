@@ -9,6 +9,7 @@ import { connectToDatabase } from './config/db.js';
 import { env } from './config/env.js';
 import fs from 'fs';
 import path from 'path';
+import { Attendance } from './models/Attendance.js';
 import apiRouter from './routes/index.js';
 
 const app = express();
@@ -36,9 +37,25 @@ app.use('/uploads', express.static(uploadDir));
 
 app.use('/api', apiRouter);
 
+async function ensureIndexes() {
+	try {
+		const indexes = await Attendance.collection.indexes();
+		const legacy = indexes.find(i => i.name === 'user_1_date_1');
+		if (legacy) {
+			await Attendance.collection.dropIndex('user_1_date_1');
+			console.log('Dropped legacy attendance index user_1_date_1');
+		}
+		await Attendance.collection.createIndex({ userId: 1, date: 1 }, { name: 'userId_1_date_1', unique: true });
+		console.log('Ensured attendance unique index on userId+date');
+	} catch (e) {
+		console.warn('ensureIndexes failed', e?.message || e);
+	}
+}
+
 const port = env.PORT;
 connectToDatabase()
-	.then(() => {
+	.then(async () => {
+		await ensureIndexes();
 		app.listen(port, () => console.log(`API listening on ${port}`));
 	})
 	.catch((err) => {

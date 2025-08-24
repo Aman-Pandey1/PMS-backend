@@ -8,16 +8,22 @@ export default function AttendanceCompany() {
 	const [end, setEnd] = useState('');
 	const [items, setItems] = useState([]);
     const [cities, setCities] = useState({});
+    const [errMsg, setErrMsg] = useState('');
 
 	async function load() {
-		const { getCompanyAttendance } = await import('../services/attendance.js');
-		const params = {};
-		if (start) params.start = start;
-		if (end) params.end = end;
-		setItems(await getCompanyAttendance(params));
+		try {
+			setErrMsg('');
+			const { getCompanyAttendance } = await import('../services/attendance.js');
+			const params = {};
+			if (start) params.start = start;
+			if (end) params.end = end;
+			setItems(await getCompanyAttendance(params));
+		} catch (e) {
+			setErrMsg(e?.response?.data?.error || 'Failed to load attendance');
+		}
 	}
 
-	useEffect(() => { load().catch(console.error); }, []);
+	useEffect(() => { load().catch(()=>{}); }, []);
 
     useEffect(() => {
         (async () => {
@@ -43,6 +49,7 @@ export default function AttendanceCompany() {
 	return (
 		<div className="space-y-4">
 			<h1 className="text-2xl font-bold">Company Attendance</h1>
+			{errMsg && <div className="text-red-800 bg-red-50 border border-red-200 rounded p-2">{errMsg}</div>}
 			<div className="flex gap-2 items-end">
 				<div>
 					<label className="block text-sm text-amber-900">Start</label>
