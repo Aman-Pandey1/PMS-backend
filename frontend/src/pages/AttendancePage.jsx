@@ -10,6 +10,8 @@ export default function AttendancePage() {
     const [city, setCity] = useState('');
 	const [msg, setMsg] = useState('');
 	const [errMsg, setErrMsg] = useState('');
+    const [page, setPage] = useState(1);
+    const pageSize = 10;
 	const timerRef = useRef(null);
 	const startRef = useRef(null);
 
@@ -62,7 +64,9 @@ export default function AttendancePage() {
 				setMsg('Checked out');
 			}
 			const { getMyAttendance } = await import('../services/attendance.js');
-			setRecent(await getMyAttendance());
+			const data = await getMyAttendance();
+			setRecent(data);
+            setPage(1);
 		} catch (e) {
 			setErrMsg(e?.response?.data?.error || 'Action failed');
 		}
@@ -74,6 +78,9 @@ export default function AttendancePage() {
 		const s = String(sec%60).padStart(2,'0');
 		return `${h}:${m}:${s}`;
 	}
+
+    const totalPages = Math.max(1, Math.ceil(recent.length / pageSize));
+    const paged = recent.slice((page-1)*pageSize, (page-1)*pageSize + pageSize);
 
 	return (
 		<div className="space-y-4">
@@ -100,7 +107,7 @@ export default function AttendancePage() {
 						</tr>
 					</thead>
 					<tbody>
-						{recent.map((r) => (
+						{paged.map((r) => (
 							<tr key={r._id}>
 								<td className="p-2 border-t border-amber-100">{r.date}</td>
 								<td className="p-2 border-t border-amber-100">{r.checkInAt ? new Date(r.checkInAt).toLocaleTimeString() : '-'}</td>
@@ -110,6 +117,13 @@ export default function AttendancePage() {
 						))}
 					</tbody>
 				</table>
+                <div className="flex justify-between items-center mt-3">
+                    <div className="text-sm opacity-70">Page {page} of {totalPages}</div>
+                    <div className="flex gap-2">
+                        <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page<=1} className="border border-amber-300 rounded px-3 py-1 disabled:opacity-50">Prev</button>
+                        <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page>=totalPages} className="border border-amber-300 rounded px-3 py-1 disabled:opacity-50">Next</button>
+                    </div>
+                </div>
 			</div>
 		</div>
 	);
