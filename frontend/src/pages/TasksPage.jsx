@@ -10,6 +10,10 @@ export default function TasksPage() {
 	const [loading, setLoading] = useState(false);
 	const [selectedTask, setSelectedTask] = useState(null);
 	const [updateText, setUpdateText] = useState('');
+	const [updateAction, setUpdateAction] = useState('');
+	const [updateNote, setUpdateNote] = useState('');
+	const [updateStatus, setUpdateStatus] = useState('');
+	const [updateProgress, setUpdateProgress] = useState('');
 	const [filterStatus, setFilterStatus] = useState('');
 
 	// Create form state
@@ -80,18 +84,24 @@ export default function TasksPage() {
 			const { getTask } = await import('../services/tasks.js');
 			const full = await getTask(task._id || task.id);
 			setSelectedTask(full);
-			setUpdateText('');
+			setUpdateText(''); setUpdateAction(''); setUpdateNote(''); setUpdateStatus(''); setUpdateProgress('');
 		} catch (e) { console.error(e); }
 	}
 
 	async function postUpdate() {
 		if (!selectedTask) return;
-		if (!updateText.trim()) return;
+		const payload = {};
+		if (updateText.trim()) payload.text = updateText.trim();
+		if (updateAction.trim()) payload.action = updateAction.trim();
+		if (updateNote.trim()) payload.note = updateNote.trim();
+		if (updateStatus) payload.status = updateStatus;
+		if (updateProgress !== '' && !isNaN(Number(updateProgress))) payload.progress = Number(updateProgress);
+		if (Object.keys(payload).length === 0) return;
 		try {
 			const { addTaskUpdate } = await import('../services/tasks.js');
-			const updated = await addTaskUpdate(selectedTask._id || selectedTask.id, updateText.trim());
+			const updated = await addTaskUpdate(selectedTask._id || selectedTask.id, payload);
 			setSelectedTask(updated);
-			setUpdateText('');
+			setUpdateText(''); setUpdateAction(''); setUpdateNote(''); setUpdateStatus(''); setUpdateProgress('');
 		} catch (e) {
 			alert('Failed to post update');
 			console.error(e);
@@ -222,18 +232,33 @@ export default function TasksPage() {
 									{(selectedTask.updates || []).map((u, idx) => (
 										<div key={idx} className="p-3 text-sm">
 											<div className="opacity-70">{new Date(u.at).toLocaleString()}</div>
-											<div>{u.text}</div>
+											<div className="font-medium">{u.action || '-'}</div>
+											<div>{u.note || u.text || ''}</div>
+											<div className="opacity-70">{u.status || ''}{typeof u.progress === 'number' ? ` · ${u.progress}%` : ''}</div>
 										</div>
 									))}
 								</div>
 								{user?.role === 'EMPLOYEE' || user?.role === 'SUPERVISOR' || user?.role === 'COMPANY_ADMIN' ? (
-									<div className="mt-2 flex gap-2">
-										<input className="flex-1 border border-amber-300 rounded px-3 py-2" placeholder="Write update (action/remarks/status)" value={updateText} onChange={(e)=>setUpdateText(e.target.value)} />
-										<button onClick={postUpdate} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">Post</button>
+									<div className="mt-2 grid md:grid-cols-5 gap-2">
+										<input className="md:col-span-2 border border-amber-300 rounded px-3 py-2" placeholder="Action taken" value={updateAction} onChange={(e)=>setUpdateAction(e.target.value)} />
+										<input className="md:col-span-3 border border-amber-300 rounded px-3 py-2" placeholder="Remarks / details" value={updateNote} onChange={(e)=>setUpdateNote(e.target.value)} />
+										<select className="border border-amber-300 rounded px-3 py-2" value={updateStatus} onChange={(e)=>setUpdateStatus(e.target.value)}>
+											<option value="">Status</option>
+											<option value="OPEN">OPEN</option>
+											<option value="IN_PROGRESS">IN_PROGRESS</option>
+											<option value="BLOCKED">BLOCKED</option>
+											<option value="DONE">DONE</option>
+										</select>
+										<input className="border border-amber-300 rounded px-3 py-2" placeholder="Progress %" value={updateProgress} onChange={(e)=>setUpdateProgress(e.target.value)} />
+										<input className="md:col-span-5 border border-amber-300 rounded px-3 py-2" placeholder="Optional: free text" value={updateText} onChange={(e)=>setUpdateText(e.target.value)} />
+										<div className="md:col-span-5 flex justify-end">
+											<button onClick={postUpdate} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">Post update</button>
+										</div>
 									</div>
 								) : null}
 							</div>
 						</div>
+					</div>
 				</div>
 			)}
 		</div>
