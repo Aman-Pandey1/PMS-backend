@@ -31,7 +31,7 @@ export default function App() {
 				<Route path="employees" element={<EmployeesPage />} />
 				        <Route path="attendance" element={<AttendancePage />} />
         <Route path="attendance/company" element={<ProtectedRoute roles={["COMPANY_ADMIN","SUPER_ADMIN","SUPERVISOR"]}><AttendanceCompany /></ProtectedRoute>} />
-				<Route path="leaves" element={<LeavesPage />} />
+				<Route path="leaves" element={<ProtectedRoute roles={['SUPER_ADMIN','SUPERVISOR']}><LeavesPage /></ProtectedRoute>} />
 				<Route path="tasks" element={<TasksPage />} />
 				<Route path="documents" element={<DocumentsPage />} />
 				<Route path="payroll" element={<ProtectedRoute roles={['COMPANY_ADMIN','SUPER_ADMIN']}><PayrollPage /></ProtectedRoute>} />

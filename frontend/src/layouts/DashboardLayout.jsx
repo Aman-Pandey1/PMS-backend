@@ -30,7 +30,9 @@ export default function DashboardLayout() {
 					{(user?.role === 'COMPANY_ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'SUPERVISOR') && (
 						<SidebarLink to="/attendance/company" label="Company Attendance" />
 					)}
-					<SidebarLink to="/leaves" label="Leaves" />
+					{(user?.role === 'SUPER_ADMIN' || user?.role === 'SUPERVISOR') && (
+						<SidebarLink to="/leaves" label="Leaves" />
+					)}
 					<SidebarLink to="/tasks" label="Tasks" />
 					<SidebarLink to="/documents" label="Documents" />
 					<SidebarLink to="/notifications" label="Notifications" />
