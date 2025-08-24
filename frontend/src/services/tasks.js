@@ -19,3 +19,13 @@ export async function updateTask(id, patch) {
 	const { data } = await api.patch(`/tasks/${id}`, patch);
 	return data;
 }
+
+export async function getTask(id) {
+	const { data } = await api.get(`/tasks/${id}`);
+	return data;
+}
+
+export async function addTaskUpdate(id, text) {
+	const { data } = await api.post(`/tasks/${id}/updates`, { text });
+	return data;
+}
