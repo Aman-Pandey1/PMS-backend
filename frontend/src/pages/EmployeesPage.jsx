@@ -18,6 +18,8 @@ export default function EmployeesPage() {
 	const [errors, setErrors] = useState({});
     const [msg, setMsg] = useState('');
     const [errMsg, setErrMsg] = useState('');
+    const [pwdModalUser, setPwdModalUser] = useState(null);
+    const [pwdModalValue, setPwdModalValue] = useState('');
 
 	useEffect(() => {
 		(async () => {
@@ -68,13 +70,14 @@ export default function EmployeesPage() {
         } catch (e) { setErrMsg(e?.response?.data?.error || 'Failed to update'); }
     }
 
-    async function onSetPassword(u) {
-        const pwd = prompt(`Set new password for ${u.fullName}`);
-        if (!pwd) return;
+    async function confirmSetPassword() {
+        if (!pwdModalUser) return;
+        if (!pwdModalValue || pwdModalValue.length < 4) { setErrMsg('Password min 4 chars'); return; }
         setMsg(''); setErrMsg('');
         try {
-            await adminSetPassword(u.id, pwd);
+            await adminSetPassword(pwdModalUser.id, pwdModalValue);
             setMsg('Password updated');
+            setPwdModalUser(null); setPwdModalValue('');
         } catch (e) { setErrMsg(e?.response?.data?.error || 'Failed to update password'); }
     }
 
@@ -152,13 +155,26 @@ export default function EmployeesPage() {
 									<input type="checkbox" checked={u.isActive !== false} onChange={()=>onToggleActive(u)} />
 								</td>
 								<td className="p-2 border-t border-amber-100 space-x-2">
-									<button onClick={()=>onSetPassword(u)} className="border border-amber-300 rounded px-3 py-1">Set Password</button>
+									<button onClick={()=>{ setPwdModalUser(u); setPwdModalValue(''); }} className="border border-amber-300 rounded px-3 py-1">Set Password</button>
 								</td>
 							</tr>
 						))}
 					</tbody>
 				</table>
 			</div>
+
+            {pwdModalUser && (
+                <div className="fixed inset-0 bg-black/40 grid place-items-center p-4">
+                    <div className="bg-white rounded-lg border border-amber-300 max-w-sm w-full p-4">
+                        <div className="font-medium text-amber-900 mb-2">Set password for {pwdModalUser.fullName}</div>
+                        <input type="password" className="w-full border border-amber-300 rounded px-3 py-2" placeholder="New password" value={pwdModalValue} onChange={(e)=>setPwdModalValue(e.target.value)} />
+                        <div className="mt-3 flex justify-end gap-2">
+                            <button onClick={()=>setPwdModalUser(null)} className="border border-amber-300 rounded px-3 py-1">Cancel</button>
+                            <button onClick={confirmSetPassword} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-1">Save</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 		</div>
 	);
 }
