@@ -16,6 +16,8 @@ export default function AttendanceCompany() {
     const [userId, setUserId] = useState('');
     const [employeeQuery, setEmployeeQuery] = useState('');
     const tableRef = useRef(null);
+    const [page, setPage] = useState(1);
+    const pageSize = 10;
 
 	async function load() {
 		try {
@@ -27,7 +29,9 @@ export default function AttendanceCompany() {
             if (user?.role === 'SUPER_ADMIN' && companyId) params.companyId = companyId;
             if (userId) params.userId = userId;
             if (user?.role === 'SUPER_ADMIN' && !companyId) { setItems([]); setErrMsg('Select a company'); return; }
-			setItems(await getCompanyAttendance(params));
+			const data = await getCompanyAttendance(params);
+			setItems(data);
+            setPage(1);
 		} catch (e) {
 			setErrMsg(e?.response?.data?.error || 'Failed to load attendance');
 		}
@@ -85,6 +89,8 @@ export default function AttendanceCompany() {
         if (employeeQuery && !(r.user?.fullName || '').toLowerCase().includes(employeeQuery.toLowerCase())) return false;
         return true;
     });
+    const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+    const paged = filteredItems.slice((page-1)*pageSize, (page-1)*pageSize + pageSize);
 
     function downloadPdf() {
         try {
@@ -166,27 +172,34 @@ export default function AttendanceCompany() {
                                 <td colSpan={7} className="p-4 text-center text-sm opacity-70">No attendance records for the selected period.</td>
                             </tr>
                         )}
-						{filteredItems.map((r) => (
-							<tr key={r._id}>
-								<td className="p-2 border-t border-amber-100">{r.user?.fullName || r.userId}</td>
-								<td className="p-2 border-t border-amber-100">{r.date}</td>
-								<td className="p-2 border-t border-amber-100">{r.checkInAt ? new Date(r.checkInAt).toLocaleString() : '-'}</td>
-								<td className="p-2 border-t border-amber-100">{r.checkOutAt ? new Date(r.checkOutAt).toLocaleString() : '-'}</td>
-								<td className="p-2 border-t border-amber-100">{r.checkInLocation?.coordinates ? (
-									<a className="text-amber-800 underline" target="_blank" href={`https://maps.google.com/?q=${r.checkInLocation.coordinates[1]},${r.checkInLocation.coordinates[0]}`}>
-										{(() => { const [lon, lat] = r.checkInLocation.coordinates; const key = `${lat.toFixed(4)},${lon.toFixed(4)}`; return `${lat.toFixed(4)}, ${lon.toFixed(4)}${cities[key]?` · ${cities[key]}`:''}`; })()}
-									</a>
-								) : '-'}</td>
-								<td className="p-2 border-t border-amber-100">{r.checkOutLocation?.coordinates ? (
-									<a className="text-amber-800 underline" target="_blank" href={`https://maps.google.com/?q=${r.checkOutLocation.coordinates[1]},${r.checkOutLocation.coordinates[0]}`}>
-										{(() => { const [lon, lat] = r.checkOutLocation.coordinates; const key = `${lat.toFixed(4)},${lon.toFixed(4)}`; return `${lat.toFixed(4)}, ${lon.toFixed(4)}${cities[key]?` · ${cities[key]}`:''}`; })()}
-									</a>
-								) : '-'}</td>
-								<td className="p-2 border-t border-amber-100">{r.dailyReport?.text || '-'}</td>
-							</tr>
-						))}
+                        {paged.map((r) => (
+                            <tr key={r._id}>
+                                <td className="p-2 border-t border-amber-100">{r.user?.fullName || r.userId}</td>
+                                <td className="p-2 border-t border-amber-100">{r.date}</td>
+                                <td className="p-2 border-t border-amber-100">{r.checkInAt ? new Date(r.checkInAt).toLocaleString() : '-'}</td>
+                                <td className="p-2 border-t border-amber-100">{r.checkOutAt ? new Date(r.checkOutAt).toLocaleString() : '-'}</td>
+                                <td className="p-2 border-t border-amber-100">{r.checkInLocation?.coordinates ? (
+                                    <a className="text-amber-800 underline" target="_blank" href={`https://maps.google.com/?q=${r.checkInLocation.coordinates[1]},${r.checkInLocation.coordinates[0]}`}>
+                                        {(() => { const [lon, lat] = r.checkInLocation.coordinates; const key = `${lat.toFixed(4)},${lon.toFixed(4)}`; return `${lat.toFixed(4)}, ${lon.toFixed(4)}${cities[key]?` · ${cities[key]}`:''}`; })()}
+                                    </a>
+                                ) : '-'}</td>
+                                <td className="p-2 border-t border-amber-100">{r.checkOutLocation?.coordinates ? (
+                                    <a className="text-amber-800 underline" target="_blank" href={`https://maps.google.com/?q=${r.checkOutLocation.coordinates[1]},${r.checkOutLocation.coordinates[0]}`}>
+                                        {(() => { const [lon, lat] = r.checkOutLocation.coordinates; const key = `${lat.toFixed(4)},${lon.toFixed(4)}`; return `${lat.toFixed(4)}, ${lon.toFixed(4)}${cities[key]?` · ${cities[key]}`:''}`; })()}
+                                    </a>
+                                ) : '-'}</td>
+                                <td className="p-2 border-t border-amber-100">{r.dailyReport?.text || '-'}</td>
+                            </tr>
+                        ))}
 					</tbody>
 				</table>
+                <div className="flex justify-between items-center mt-3">
+                    <div className="text-sm opacity-70">Page {page} of {totalPages}</div>
+                    <div className="flex gap-2">
+                        <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page<=1} className="border border-amber-300 rounded px-3 py-1 disabled:opacity-50">Prev</button>
+                        <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page>=totalPages} className="border border-amber-300 rounded px-3 py-1 disabled:opacity-50">Next</button>
+                    </div>
+                </div>
 			</div>
 		</div>
 	);

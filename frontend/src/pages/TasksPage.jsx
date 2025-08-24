@@ -19,6 +19,8 @@ export default function TasksPage() {
 	const [projectQuery, setProjectQuery] = useState('');
 	const [msg, setMsg] = useState('');
 	const [errMsg, setErrMsg] = useState('');
+    const [page, setPage] = useState(1);
+    const pageSize = 10;
 
 	// Create form state
 	const [assigneeId, setAssigneeId] = useState('');
@@ -88,6 +90,10 @@ export default function TasksPage() {
 		return base;
 	}, [tab, tasksAssigned, tasksCreated, companyTasks, filterStatus]);
 
+    const totalPages = Math.max(1, Math.ceil(currentTasks.length / pageSize));
+    const paged = currentTasks.slice((page-1)*pageSize, (page-1)*pageSize + pageSize);
+    useEffect(()=>{ setPage(1); }, [tab, filterStatus, projectQuery]);
+
 	async function searchCompanyTasks() {
 		try {
 			setLoading(true); setErrMsg('');
@@ -95,6 +101,7 @@ export default function TasksPage() {
 			const items = await filterTasks({ projectName: projectQuery.trim() || undefined, status: filterStatus || undefined });
 			setCompanyTasks(items);
 			setTab('company');
+            setPage(1);
 		} catch (e) {
 			setErrMsg(e?.response?.data?.error || 'Failed to load tasks');
 		} finally { setLoading(false); }
@@ -236,7 +243,7 @@ export default function TasksPage() {
 						</tr>
 					</thead>
 					<tbody>
-						{currentTasks.map((t) => (
+						{paged.map((t) => (
 							<tr key={t._id || t.id}>
 								<td className="p-2 border-t border-amber-100">{t.projectName || '-'}</td>
 								<td className="p-2 border-t border-amber-100">{t.assigneeId?.fullName || t.assigneeName || '-'}</td>
@@ -251,6 +258,13 @@ export default function TasksPage() {
 						))}
 					</tbody>
 				</table>
+                <div className="flex justify-between items-center mt-3">
+                    <div className="text-sm opacity-70">Page {page} of {totalPages}</div>
+                    <div className="flex gap-2">
+                        <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page<=1} className="border border-amber-300 rounded px-3 py-1 disabled:opacity-50">Prev</button>
+                        <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page>=totalPages} className="border border-amber-300 rounded px-3 py-1 disabled:opacity-50">Next</button>
+                    </div>
+                </div>
 			</div>
 
 			{/* Modal */}

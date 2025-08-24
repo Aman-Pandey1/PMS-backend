@@ -11,6 +11,9 @@ export default function LeavesPage() {
 	const [companyList, setCompanyList] = useState([]);
 	const [msg, setMsg] = useState('');
 	const [errMsg, setErrMsg] = useState('');
+    const [myPage, setMyPage] = useState(1);
+    const [coPage, setCoPage] = useState(1);
+    const pageSize = 10;
 
 	async function load() {
 		try {
@@ -64,6 +67,11 @@ export default function LeavesPage() {
 		} catch (e) { setErrMsg(e?.response?.data?.error || 'Action failed'); }
 	}
 
+    const myTotal = Math.max(1, Math.ceil(myList.length / pageSize));
+    const myPaged = myList.slice((myPage-1)*pageSize, (myPage-1)*pageSize + pageSize);
+    const coTotal = Math.max(1, Math.ceil(companyList.length / pageSize));
+    const coPaged = companyList.slice((coPage-1)*pageSize, (coPage-1)*pageSize + pageSize);
+
 	return (
 		<div className="space-y-6">
 			<h1 className="text-2xl font-bold">Leaves</h1>
@@ -97,7 +105,7 @@ export default function LeavesPage() {
 							</tr>
 						</thead>
 						<tbody>
-							{myList.map(l => (
+							{myPaged.map(l => (
 								<tr key={l._id}>
 									<td className="p-2 border-t border-amber-100">{l.startDate} → {l.endDate}</td>
 									<td className="p-2 border-t border-amber-100">{l.reason}</td>
@@ -106,6 +114,13 @@ export default function LeavesPage() {
 							))}
 						</tbody>
 					</table>
+                    <div className="flex justify-between items-center mt-3">
+                        <div className="text-sm opacity-70">Page {myPage} of {myTotal}</div>
+                        <div className="flex gap-2">
+                            <button onClick={()=>setMyPage(p=>Math.max(1,p-1))} disabled={myPage<=1} className="border border-amber-300 rounded px-3 py-1 disabled:opacity-50">Prev</button>
+                            <button onClick={()=>setMyPage(p=>Math.min(myTotal,p+1))} disabled={myPage>=myTotal} className="border border-amber-300 rounded px-3 py-1 disabled:opacity-50">Next</button>
+                        </div>
+                    </div>
 				</div>
 			</div>
 
@@ -123,7 +138,7 @@ export default function LeavesPage() {
 							</tr>
 						</thead>
 						<tbody>
-							{companyList.map(l => (
+							{coPaged.map(l => (
 								<tr key={l._id}>
 									<td className="p-2 border-t border-amber-100">{l.user?.fullName || l.userId}</td>
 									<td className="p-2 border-t border-amber-100">{l.startDate} → {l.endDate}</td>
@@ -137,6 +152,13 @@ export default function LeavesPage() {
 							))}
 						</tbody>
 					</table>
+                    <div className="flex justify-between items-center mt-3">
+                        <div className="text-sm opacity-70">Page {coPage} of {coTotal}</div>
+                        <div className="flex gap-2">
+                            <button onClick={()=>setCoPage(p=>Math.max(1,p-1))} disabled={coPage<=1} className="border border-amber-300 rounded px-3 py-1 disabled:opacity-50">Prev</button>
+                            <button onClick={()=>setCoPage(p=>Math.min(coTotal,p+1))} disabled={coPage>=coTotal} className="border border-amber-300 rounded px-3 py-1 disabled:opacity-50">Next</button>
+                        </div>
+                    </div>
 				</div>
 			)}
 		</div>
