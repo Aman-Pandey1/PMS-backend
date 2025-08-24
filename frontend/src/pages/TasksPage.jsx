@@ -15,6 +15,8 @@ export default function TasksPage() {
 	const [updateStatus, setUpdateStatus] = useState('');
 	const [updateProgress, setUpdateProgress] = useState('');
 	const [filterStatus, setFilterStatus] = useState('');
+	const [msg, setMsg] = useState('');
+	const [errMsg, setErrMsg] = useState('');
 
 	// Create form state
 	const [assigneeId, setAssigneeId] = useState('');
@@ -39,8 +41,12 @@ export default function TasksPage() {
 				setTasksCreated(c);
 				try {
 					if (user?.role !== 'EMPLOYEE') {
-						const { listUsers } = await import('../services/users.js');
-						setSubordinates(await listUsers());
+						const { listUsers, mySubordinates } = await import('../services/users.js');
+						if (user?.role === 'SUPERVISOR') {
+							setSubordinates(await mySubordinates());
+						} else {
+							setSubordinates(await listUsers());
+						}
 					}
 				} catch {}
 			} catch (e) {
@@ -53,6 +59,7 @@ export default function TasksPage() {
 
 	async function createTask(e) {
 		e.preventDefault();
+		setMsg(''); setErrMsg('');
 		const errs = {};
 		if (!assigneeId) errs.assigneeId = 'Assignee required';
 		if (!projectName || projectName.length < 2) errs.projectName = 'Project name required';
@@ -66,9 +73,9 @@ export default function TasksPage() {
 			const created = await createTask({ assigneeId, projectName, description, startDate: startDate || undefined, deadline: deadline || undefined, priority, remarks });
 			setTasksCreated((prev) => [created, ...prev]);
 			setAssigneeId(''); setProjectName(''); setDescription(''); setStartDate(''); setDeadline(''); setPriority('MEDIUM'); setRemarks(''); setErrors({});
-			alert('Task created');
+			setMsg('Task created');
 		} catch (e) {
-			alert('Failed to create task');
+			setErrMsg(e?.response?.data?.error || 'Failed to create task');
 			console.error(e);
 		}
 	}
@@ -90,6 +97,7 @@ export default function TasksPage() {
 
 	async function postUpdate() {
 		if (!selectedTask) return;
+		setMsg(''); setErrMsg('');
 		const payload = {};
 		if (updateText.trim()) payload.text = updateText.trim();
 		if (updateAction.trim()) payload.action = updateAction.trim();
@@ -102,8 +110,9 @@ export default function TasksPage() {
 			const updated = await addTaskUpdate(selectedTask._id || selectedTask.id, payload);
 			setSelectedTask(updated);
 			setUpdateText(''); setUpdateAction(''); setUpdateNote(''); setUpdateStatus(''); setUpdateProgress('');
+			setMsg('Update posted');
 		} catch (e) {
-			alert('Failed to post update');
+			setErrMsg(e?.response?.data?.error || 'Failed to post update');
 			console.error(e);
 		}
 	}
@@ -111,6 +120,8 @@ export default function TasksPage() {
 	return (
 		<div className="space-y-6">
 			<h1 className="text-2xl font-bold">Tasks</h1>
+			{msg && <div className="text-green-800 bg-green-50 border border-green-200 rounded p-2">{msg}</div>}
+			{errMsg && <div className="text-red-800 bg-red-50 border border-red-200 rounded p-2">{errMsg}</div>}
 
 			{/* Create (hidden for employees) */}
 			{user?.role !== 'EMPLOYEE' && (
@@ -183,7 +194,7 @@ export default function TasksPage() {
 					<thead>
 						<tr className="bg-amber-50 text-amber-900">
 							<th className="text-left p-2 border-b border-amber-200">Project</th>
-							<th className="text-left p-2 border-b border-amber-200">Description</th>
+							<th className="text-left p-2 border-b border-amber-200">Assignee</th>
 							<th className="text-left p-2 border-b border-amber-200">Status</th>
 							<th className="text-left p-2 border-b border-amber-200">Priority</th>
 							<th className="text-left p-2 border-b border-amber-200">Deadline</th>
@@ -195,7 +206,7 @@ export default function TasksPage() {
 						{currentTasks.map((t) => (
 							<tr key={t._id || t.id}>
 								<td className="p-2 border-t border-amber-100">{t.projectName || '-'}</td>
-								<td className="p-2 border-t border-amber-100">{t.description}</td>
+								<td className="p-2 border-t border-amber-100">{t.assigneeId?.fullName || t.assigneeName || '-'}</td>
 								<td className="p-2 border-t border-amber-100">{t.status}</td>
 								<td className="p-2 border-t border-amber-100">{t.priority}</td>
 								<td className="p-2 border-t border-amber-100">{t.deadline ? new Date(t.deadline).toLocaleDateString() : '-'}</td>
@@ -222,6 +233,8 @@ export default function TasksPage() {
 								<div><span className="font-medium">Project: </span>{selectedTask.projectName || '-'}</div>
 								<div><span className="font-medium">Status: </span>{selectedTask.status}</div>
 								<div><span className="font-medium">Priority: </span>{selectedTask.priority}</div>
+								<div><span className="font-medium">Assignee: </span>{selectedTask.assigneeId?.fullName || '-'}</div>
+								<div><span className="font-medium">Creator: </span>{selectedTask.creatorId?.fullName || '-'}</div>
 								<div><span className="font-medium">Start: </span>{selectedTask.startDate ? new Date(selectedTask.startDate).toLocaleDateString() : '-'}</div>
 								<div><span className="font-medium">Deadline: </span>{selectedTask.deadline ? new Date(selectedTask.deadline).toLocaleDateString() : '-'}</div>
 							</div>
@@ -231,7 +244,7 @@ export default function TasksPage() {
 									{(selectedTask.updates || []).length === 0 && <div className="p-3 text-sm opacity-70">No updates yet</div>}
 									{(selectedTask.updates || []).map((u, idx) => (
 										<div key={idx} className="p-3 text-sm">
-											<div className="opacity-70">{new Date(u.at).toLocaleString()}</div>
+											<div className="opacity-70">{new Date(u.at).toLocaleString()} · {u.by?.fullName || ''}</div>
 											<div className="font-medium">{u.action || '-'}</div>
 											<div>{u.note || u.text || ''}</div>
 											<div className="opacity-70">{u.status || ''}{typeof u.progress === 'number' ? ` · ${u.progress}%` : ''}</div>

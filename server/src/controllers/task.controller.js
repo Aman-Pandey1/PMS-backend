@@ -39,7 +39,10 @@ export async function updateTask(req, res) {
 
 export async function getTask(req, res) {
 	const { id } = req.params;
-	const item = await Task.findById(id);
+	const item = await Task.findById(id)
+		.populate('assigneeId', 'fullName email')
+		.populate('creatorId', 'fullName email')
+		.populate('updates.by', 'fullName email');
 	if (!item) return res.status(404).json({ error: 'Not found' });
 	res.json(item);
 }
@@ -63,7 +66,11 @@ export async function addTaskUpdate(req, res) {
 	if (status) item.status = status;
 	if (typeof progress === 'number') item.progress = Math.max(0, Math.min(100, progress));
 	await item.save();
-	res.json(item);
+	const populated = await Task.findById(id)
+		.populate('assigneeId', 'fullName email')
+		.populate('creatorId', 'fullName email')
+		.populate('updates.by', 'fullName email');
+	res.json(populated);
 }
 
 export async function filterTasks(req, res) {
@@ -73,6 +80,9 @@ export async function filterTasks(req, res) {
 	if (assigneeId) where.assigneeId = assigneeId;
 	if (creatorId) where.creatorId = creatorId;
 	if (projectName) where.projectName = new RegExp(projectName, 'i');
-	const items = await Task.find(where).sort({ createdAt: -1 });
+	const items = await Task.find(where)
+		.sort({ createdAt: -1 })
+		.populate('assigneeId', 'fullName email')
+		.populate('creatorId', 'fullName email');
 	res.json({ items });
 }
