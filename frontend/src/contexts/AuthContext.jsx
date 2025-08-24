@@ -1,18 +1,14 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useMemo, useState } from 'react';
 
 const AuthContext = createContext(undefined);
 
 export const AuthProvider = ({ children }) => {
-	const [user, setUser] = useState(null);
-
-	useEffect(() => {
-		const raw = localStorage.getItem('auth:user');
-		if (raw) {
-			try {
-				setUser(JSON.parse(raw));
-			} catch {}
-		}
-	}, []);
+	const [user, setUser] = useState(() => {
+		try {
+			const raw = localStorage.getItem('auth:user');
+			return raw ? JSON.parse(raw) : null;
+		} catch { return null; }
+	});
 
 	const loginWithPassword = async (email, password) => {
 		const { loginRequest } = await import('../services/auth.js');
