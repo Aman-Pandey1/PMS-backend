@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { createCompany, listCompanies } from '../services/companies.js';
+import { createCompany, listCompanies, uploadCompanyLogo, updateCompany, deleteCompany, toggleCompany } from '../services/companies.js';
 import { listUsers } from '../services/users.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 
@@ -14,10 +14,13 @@ export default function CompaniesPage() {
 	const [formAddress, setFormAddress] = useState('');
 	const [formDesc, setFormDesc] = useState('');
 	const [formLogo, setFormLogo] = useState('');
+    const [formLogoFile, setFormLogoFile] = useState(null);
 	const [adminEmail, setAdminEmail] = useState('');
 	const [adminPassword, setAdminPassword] = useState('');
 	const [adminName, setAdminName] = useState('');
 	const [formErrors, setFormErrors] = useState({});
+    const [msg, setMsg] = useState('');
+    const [errMsg, setErrMsg] = useState('');
 
 	useEffect(() => {
 		listCompanies().then(setItems).catch(console.error);
@@ -43,17 +46,25 @@ export default function CompaniesPage() {
 		if (adminEmail && adminPassword.length < 4) errs.adminPassword = 'Password min 4 chars';
 		setFormErrors(errs);
 		if (Object.keys(errs).length) return;
-		const payload = { name, code, status: formStatus, address: { line1: formAddress }, description: formDesc, logo: formLogo, adminEmail, adminPassword, adminName };
+		let logoUrl = formLogo;
+		try {
+			if (formLogoFile) logoUrl = await uploadCompanyLogo('new', formLogoFile);
+		} catch {}
+		const payload = { name, code, status: formStatus, address: { line1: formAddress }, description: formDesc, logo: logoUrl, adminEmail, adminPassword, adminName };
 		const resp = await createCompany(payload);
 		const c = resp.company || resp;
 		setItems((prev) => [c, ...prev]);
 		setName(''); setCode(''); setFormStatus('ACTIVE'); setFormAddress(''); setFormDesc(''); setFormLogo(''); setAdminEmail(''); setAdminPassword(''); setAdminName('');
+		setFormLogoFile(null);
+        setMsg('Company created successfully'); setErrMsg('');
 	}
 
 	return (
 		<div>
 			<h1 className="text-2xl font-bold mb-4">Companies</h1>
 			<form onSubmit={add} className="grid md:grid-cols-3 gap-3 mb-6 bg-white border border-amber-300 rounded-lg p-4">
+				{msg && <div className="md:col-span-3 text-green-800 bg-green-50 border border-green-200 rounded p-2">{msg}</div>}
+				{errMsg && <div className="md:col-span-3 text-red-800 bg-red-50 border border-red-200 rounded p-2">{errMsg}</div>}
 				<div className="md:col-span-1">
 					<label className="block text-sm mb-1 text-amber-900">Name</label>
 					<input className={"w-full border rounded px-3 py-2 " + (formErrors.name ? 'border-red-500' : 'border-amber-300')} placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
@@ -70,8 +81,11 @@ export default function CompaniesPage() {
 					</select>
 				</div>
 				<div className="md:col-span-3">
-					<label className="block text-sm mb-1 text-amber-900">Logo URL</label>
-					<input className="w-full border border-amber-300 rounded px-3 py-2" placeholder="https://..." value={formLogo} onChange={(e)=>setFormLogo(e.target.value)} />
+					<label className="block text-sm mb-1 text-amber-900">Logo</label>
+					<div className="flex gap-2 items-center">
+						<input className="flex-1 border border-amber-300 rounded px-3 py-2" placeholder="https://... (optional)" value={formLogo} onChange={(e)=>setFormLogo(e.target.value)} />
+						<input type="file" accept="image/*" onChange={(e)=>setFormLogoFile(e.target.files?.[0]||null)} />
+					</div>
 				</div>
 				<div className="md:col-span-3">
 					<label className="block text-sm mb-1 text-amber-900">Address</label>
@@ -103,12 +117,18 @@ export default function CompaniesPage() {
 			</form>
 			<div className="grid gap-3">
 				{items.map((c) => (
-					<div key={c.id} className="border border-amber-300 rounded p-3 bg-white flex justify-between items-center">
+					<div key={c.id} className="border border-amber-300 rounded p-3 bg-white flex flex-wrap gap-3 items-center justify-between">
 						<div>
 							<div className="font-medium text-amber-900">{c.name}</div>
-							<div className="opacity-70 text-sm">{c.code}</div>
+							<div className="opacity-70 text-sm">{c.code} · {c.status}</div>
 						</div>
-						{c.logo && <img alt="logo" src={c.logo} className="h-8" />}
+						<div className="flex items-center gap-2">
+							<label className="text-sm">Enabled</label>
+							<input type="checkbox" checked={c.status !== 'INACTIVE'} onChange={async (e)=>{ const updated = await toggleCompany(c.id, e.target.checked); setItems(prev=>prev.map(x=>x.id===c.id?updated:x)); }} />
+							<button onClick={async ()=>{ const name = prompt('New name', c.name) || c.name; const updated = await updateCompany(c.id, { name }); setItems(prev=>prev.map(x=>x.id===c.id?updated:x)); }} className="border border-amber-300 rounded px-3 py-1">Edit</button>
+							<button onClick={async ()=>{ if (!confirm('Delete company?')) return; await deleteCompany(c.id); setItems(prev=>prev.filter(x=>x.id!==c.id)); }} className="text-white bg-red-600 rounded px-3 py-1">Delete</button>
+							{c.logo && <img alt="logo" src={c.logo} className="h-8" />}
+						</div>
 					</div>
 				))}
 			</div>

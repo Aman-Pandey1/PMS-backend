@@ -25,8 +25,9 @@ export async function getTask(id) {
 	return data;
 }
 
-export async function addTaskUpdate(id, text) {
-	const { data } = await api.post(`/tasks/${id}/updates`, { text });
+export async function addTaskUpdate(id, input) {
+	const payload = typeof input === 'string' ? { text: input } : (input || {});
+	const { data } = await api.post(`/tasks/${id}/updates`, payload);
 	return data;
 }
 

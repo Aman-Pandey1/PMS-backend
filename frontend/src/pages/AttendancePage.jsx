@@ -8,6 +8,8 @@ export default function AttendancePage() {
 	const [elapsed, setElapsed] = useState(0);
 	const [coords, setCoords] = useState(null);
     const [city, setCity] = useState('');
+	const [msg, setMsg] = useState('');
+	const [errMsg, setErrMsg] = useState('');
 	const timerRef = useRef(null);
 	const startRef = useRef(null);
 
@@ -40,6 +42,7 @@ export default function AttendancePage() {
 	}
 
 	async function toggle() {
+		setMsg(''); setErrMsg('');
 		try {
 			const pos = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject));
 			const { longitude, latitude } = pos.coords;
@@ -50,16 +53,18 @@ export default function AttendancePage() {
 				setCheckedIn(true);
 				startRef.current = Date.now();
 				startTimer();
+				setMsg('Checked in');
 			} else {
 				await (await import('../services/attendance.js')).checkOut(report, longitude, latitude);
 				setCheckedIn(false);
 				setReport('');
 				stopTimer();
+				setMsg('Checked out');
 			}
 			const { getMyAttendance } = await import('../services/attendance.js');
 			setRecent(await getMyAttendance());
 		} catch (e) {
-			alert('Action failed');
+			setErrMsg(e?.response?.data?.error || 'Action failed');
 		}
 	}
 
@@ -73,6 +78,8 @@ export default function AttendancePage() {
 	return (
 		<div className="space-y-4">
 			<h1 className="text-2xl font-bold">Attendance</h1>
+			{msg && <div className="text-green-800 bg-green-50 border border-green-200 rounded p-2">{msg}</div>}
+			{errMsg && <div className="text-red-800 bg-red-50 border border-red-200 rounded p-2">{errMsg}</div>}
 			<div className="flex items-center gap-4">
 				<button className="bg-amber-700 hover:bg-amber-800 text-white px-3 py-2 rounded" onClick={toggle} disabled={checkedIn && !report && elapsed>0 && false}>{checkedIn ? 'Check out' : 'Check in'}</button>
 				{checkedIn && <div className="text-amber-900 font-mono">Timer: {format(elapsed)}</div>}

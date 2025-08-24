@@ -9,6 +9,8 @@ export default function LeavesPage() {
 	const [errors, setErrors] = useState({});
 	const [myList, setMyList] = useState([]);
 	const [companyList, setCompanyList] = useState([]);
+	const [msg, setMsg] = useState('');
+	const [errMsg, setErrMsg] = useState('');
 
 	async function load() {
 		try {
@@ -34,6 +36,7 @@ export default function LeavesPage() {
 
 	async function submit(e) {
 		e.preventDefault();
+		setMsg(''); setErrMsg('');
 		const errs = {};
 		if (!start) errs.start = 'Start date required';
 		if (!end) errs.end = 'End date required';
@@ -45,22 +48,27 @@ export default function LeavesPage() {
 			const leavesSvc = await import('../services/leaves.js');
 			await leavesSvc.requestLeave({ startDate: start, endDate: end, reason });
 			setStart(''); setEnd(''); setReason('');
+			setMsg('Leave applied successfully');
 			load();
-		} catch (e) { alert('Failed to request'); }
+		} catch (e) { setErrMsg(e?.response?.data?.error || 'Failed to request'); }
 	}
 
 	async function act(id, type) {
+		setMsg(''); setErrMsg('');
 		try {
 			const leavesSvc = await import('../services/leaves.js');
 			if (type === 'approve') await leavesSvc.approveLeave(id);
 			if (type === 'reject') await leavesSvc.rejectLeave(id);
+			setMsg(type === 'approve' ? 'Approved' : 'Rejected');
 			load();
-		} catch (e) { alert('Action failed'); }
+		} catch (e) { setErrMsg(e?.response?.data?.error || 'Action failed'); }
 	}
 
 	return (
 		<div className="space-y-6">
 			<h1 className="text-2xl font-bold">Leaves</h1>
+			{msg && <div className="text-green-800 bg-green-50 border border-green-200 rounded p-2">{msg}</div>}
+			{errMsg && <div className="text-red-800 bg-red-50 border border-red-200 rounded p-2">{errMsg}</div>}
 			<div className="grid md:grid-cols-2 gap-6">
 				<div className="bg-white border border-amber-300 rounded p-4">
 					<div className="text-amber-900 font-medium mb-3">Apply Leave</div>
