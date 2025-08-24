@@ -1,44 +1,79 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export default function AttendancePage() {
 	const [checkedIn, setCheckedIn] = useState(false);
 	const [report, setReport] = useState('');
 	const [recent, setRecent] = useState([]);
+	const [elapsed, setElapsed] = useState(0);
+	const [coords, setCoords] = useState(null);
+	const timerRef = useRef(null);
+	const startRef = useRef(null);
 
 	useEffect(() => {
 		(async () => {
 			try {
 				const { getMyAttendance } = await import('../services/attendance.js');
-				setRecent(await getMyAttendance());
+				const list = await getMyAttendance();
+				setRecent(list);
+				const today = list.find(r => r.status === 'OPEN');
+				if (today) {
+					setCheckedIn(true);
+					startRef.current = new Date(today.checkInAt).getTime();
+					startTimer();
+				}
 			} catch {}
 		})();
+		return () => stopTimer();
 	}, []);
 
-	async function doCheckIn() {
-		const pos = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject));
-		const { longitude, latitude } = pos.coords;
-		await (await import('../services/attendance.js')).checkIn(longitude, latitude);
-		setCheckedIn(true);
-		const { getMyAttendance } = await import('../services/attendance.js');
-		setRecent(await getMyAttendance());
+	function startTimer() {
+		stopTimer();
+		timerRef.current = setInterval(() => {
+			const base = startRef.current || Date.now();
+			setElapsed(Math.floor((Date.now() - base) / 1000));
+		}, 1000);
+	}
+	function stopTimer() {
+		if (timerRef.current) clearInterval(timerRef.current);
 	}
 
-	async function doCheckOut() {
-		const pos = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject));
-		const { longitude, latitude } = pos.coords;
-		await (await import('../services/attendance.js')).checkOut(report, longitude, latitude);
-		setCheckedIn(false);
-		setReport('');
-		const { getMyAttendance } = await import('../services/attendance.js');
-		setRecent(await getMyAttendance());
+	async function toggle() {
+		try {
+			const pos = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject));
+			const { longitude, latitude } = pos.coords;
+			setCoords({ longitude, latitude });
+			if (!checkedIn) {
+				await (await import('../services/attendance.js')).checkIn(longitude, latitude);
+				setCheckedIn(true);
+				startRef.current = Date.now();
+				startTimer();
+			} else {
+				await (await import('../services/attendance.js')).checkOut(report, longitude, latitude);
+				setCheckedIn(false);
+				setReport('');
+				stopTimer();
+			}
+			const { getMyAttendance } = await import('../services/attendance.js');
+			setRecent(await getMyAttendance());
+		} catch (e) {
+			alert('Action failed');
+		}
+	}
+
+	function format(sec) {
+		const h = String(Math.floor(sec/3600)).padStart(2,'0');
+		const m = String(Math.floor((sec%3600)/60)).padStart(2,'0');
+		const s = String(sec%60).padStart(2,'0');
+		return `${h}:${m}:${s}`;
 	}
 
 	return (
 		<div className="space-y-4">
 			<h1 className="text-2xl font-bold">Attendance</h1>
-			<div className="flex gap-2">
-				<button className="bg-amber-700 hover:bg-amber-800 text-white px-3 py-2 rounded" onClick={doCheckIn} disabled={checkedIn}>Check in</button>
-				<button className="bg-amber-700 hover:bg-amber-800 text-white px-3 py-2 rounded" onClick={doCheckOut} disabled={!checkedIn || !report}>Check out</button>
+			<div className="flex items-center gap-4">
+				<button className="bg-amber-700 hover:bg-amber-800 text-white px-3 py-2 rounded" onClick={toggle} disabled={checkedIn && !report && elapsed>0 && false}>{checkedIn ? 'Check out' : 'Check in'}</button>
+				{checkedIn && <div className="text-amber-900 font-mono">Timer: {format(elapsed)}</div>}
+				{coords && <div className="text-sm opacity-70">Location: {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}</div>}
 			</div>
 			<textarea className="w-full border border-amber-300 rounded p-2" placeholder="Daily report (required to check out)" value={report} onChange={(e) => setReport(e.target.value)} />
 			<div className="text-sm opacity-70">Status: {checkedIn ? 'Checked in' : 'Not checked in'}</div>

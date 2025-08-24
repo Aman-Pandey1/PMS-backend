@@ -7,7 +7,7 @@ const userSchema = new Schema({
 	passwordHash: { type: String, required: true },
 	fullName: { type: String, required: true },
 	companyId: { type: Schema.Types.ObjectId, ref: 'Company', index: true },
-	role: { type: String, enum: ['SUPER_ADMIN', 'COMPANY_ADMIN', 'SUPERVISOR', 'EMPLOYEE'], required: true },
+	role: { type: String, enum: ['SUPER_ADMIN', 'COMPANY_ADMIN', 'SUPERVISOR', 'HR', 'EMPLOYEE'], required: true },
 	managerId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
 	ancestors: { type: [Schema.Types.ObjectId], index: true, default: [] },
 	depth: { type: Number, default: 0 },

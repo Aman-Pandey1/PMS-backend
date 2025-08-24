@@ -10,16 +10,26 @@ export default function LeavesPage() {
 	const [myList, setMyList] = useState([]);
 	const [companyList, setCompanyList] = useState([]);
 
+	async function load() {
+		try {
+			const leavesSvc = await import('../services/leaves.js');
+			setMyList(await leavesSvc.myLeaves());
+			if (user?.role === 'SUPER_ADMIN' || user?.role === 'COMPANY_ADMIN' || user?.role === 'SUPERVISOR') {
+				setCompanyList(await leavesSvc.companyLeaves());
+			}
+		} catch (e) { console.error(e); }
+	}
+
 	useEffect(() => {
-		(async () => {
-			try {
-				const leavesSvc = await import('../services/leaves.js');
-				setMyList(await leavesSvc.myLeaves());
-				if (user?.role === 'SUPER_ADMIN' || user?.role === 'COMPANY_ADMIN' || user?.role === 'SUPERVISOR') {
-					setCompanyList(await leavesSvc.companyLeaves());
-				}
-			} catch (e) { console.error(e); }
-		})();
+		load();
+		const onFocus = () => load();
+		window.addEventListener('focus', onFocus);
+		const id = setInterval(load, 30000);
+		return () => {
+			window.removeEventListener('focus', onFocus);
+			clearInterval(id);
+		};
+	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [user?.role]);
 
 	async function submit(e) {
@@ -35,7 +45,7 @@ export default function LeavesPage() {
 			const leavesSvc = await import('../services/leaves.js');
 			await leavesSvc.requestLeave({ startDate: start, endDate: end, reason });
 			setStart(''); setEnd(''); setReason('');
-			setMyList(await leavesSvc.myLeaves());
+			load();
 		} catch (e) { alert('Failed to request'); }
 	}
 
@@ -44,7 +54,7 @@ export default function LeavesPage() {
 			const leavesSvc = await import('../services/leaves.js');
 			if (type === 'approve') await leavesSvc.approveLeave(id);
 			if (type === 'reject') await leavesSvc.rejectLeave(id);
-			setCompanyList(await leavesSvc.companyLeaves());
+			load();
 		} catch (e) { alert('Action failed'); }
 	}
 
@@ -107,7 +117,7 @@ export default function LeavesPage() {
 						<tbody>
 							{companyList.map(l => (
 								<tr key={l._id}>
-									<td className="p-2 border-t border-amber-100">{l.userId}</td>
+									<td className="p-2 border-t border-amber-100">{l.user?.fullName || l.userId}</td>
 									<td className="p-2 border-t border-amber-100">{l.startDate} → {l.endDate}</td>
 									<td className="p-2 border-t border-amber-100">{l.reason}</td>
 									<td className="p-2 border-t border-amber-100">{l.status}</td>

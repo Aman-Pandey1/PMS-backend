@@ -8,6 +8,10 @@ export default function CompaniesPage() {
 	const [formStatus, setFormStatus] = useState('ACTIVE');
 	const [formAddress, setFormAddress] = useState('');
 	const [formDesc, setFormDesc] = useState('');
+	const [formLogo, setFormLogo] = useState('');
+	const [adminEmail, setAdminEmail] = useState('');
+	const [adminPassword, setAdminPassword] = useState('');
+	const [adminName, setAdminName] = useState('');
 	const [formErrors, setFormErrors] = useState({});
 
 	useEffect(() => {
@@ -19,16 +23,15 @@ export default function CompaniesPage() {
 		const errs = {};
 		if (!name.trim()) errs.name = 'Name required';
 		if (!code.trim()) errs.code = 'Code required';
+		if (adminEmail && !adminEmail.includes('@')) errs.adminEmail = 'Valid email required';
+		if (adminEmail && adminPassword.length < 4) errs.adminPassword = 'Password min 4 chars';
 		setFormErrors(errs);
 		if (Object.keys(errs).length) return;
-		const payload = { name, code, status: formStatus, address: { line1: formAddress }, description: formDesc };
-		const c = await createCompany(payload);
+		const payload = { name, code, status: formStatus, address: { line1: formAddress }, description: formDesc, logo: formLogo, adminEmail, adminPassword, adminName };
+		const resp = await createCompany(payload);
+		const c = resp.company || resp;
 		setItems((prev) => [c, ...prev]);
-		setName('');
-		setCode('');
-		setFormStatus('ACTIVE');
-		setFormAddress('');
-		setFormDesc('');
+		setName(''); setCode(''); setFormStatus('ACTIVE'); setFormAddress(''); setFormDesc(''); setFormLogo(''); setAdminEmail(''); setAdminPassword(''); setAdminName('');
 	}
 
 	return (
@@ -37,11 +40,11 @@ export default function CompaniesPage() {
 			<form onSubmit={add} className="grid md:grid-cols-3 gap-3 mb-6 bg-white border border-amber-300 rounded-lg p-4">
 				<div className="md:col-span-1">
 					<label className="block text-sm mb-1 text-amber-900">Name</label>
-					<input className="w-full border border-amber-300 rounded px-3 py-2" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+					<input className={"w-full border rounded px-3 py-2 " + (formErrors.name ? 'border-red-500' : 'border-amber-300')} placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
 				</div>
 				<div className="md:col-span-1">
 					<label className="block text-sm mb-1 text-amber-900">Code</label>
-					<input className="w-full border border-amber-300 rounded px-3 py-2" placeholder="Code" value={code} onChange={(e) => setCode(e.target.value)} />
+					<input className={"w-full border rounded px-3 py-2 " + (formErrors.code ? 'border-red-500' : 'border-amber-300')} placeholder="Code" value={code} onChange={(e) => setCode(e.target.value)} />
 				</div>
 				<div className="md:col-span-1">
 					<label className="block text-sm mb-1 text-amber-900">Status</label>
@@ -51,6 +54,10 @@ export default function CompaniesPage() {
 					</select>
 				</div>
 				<div className="md:col-span-3">
+					<label className="block text-sm mb-1 text-amber-900">Logo URL</label>
+					<input className="w-full border border-amber-300 rounded px-3 py-2" placeholder="https://..." value={formLogo} onChange={(e)=>setFormLogo(e.target.value)} />
+				</div>
+				<div className="md:col-span-3">
 					<label className="block text-sm mb-1 text-amber-900">Address</label>
 					<input className="w-full border border-amber-300 rounded px-3 py-2" placeholder="Line 1, City, State, ZIP" value={formAddress} onChange={(e)=>setFormAddress(e.target.value)} />
 				</div>
@@ -58,15 +65,34 @@ export default function CompaniesPage() {
 					<label className="block text-sm mb-1 text-amber-900">Description</label>
 					<textarea className="w-full border border-amber-300 rounded px-3 py-2" placeholder="Short description" value={formDesc} onChange={(e)=>setFormDesc(e.target.value)} />
 				</div>
+				<div className="md:col-span-3 grid md:grid-cols-3 gap-3">
+					<div>
+						<label className="block text-sm mb-1 text-amber-900">Admin Email</label>
+						<input className={"w-full border rounded px-3 py-2 " + (formErrors.adminEmail ? 'border-red-500' : 'border-amber-300')} placeholder="admin@company.com" value={adminEmail} onChange={(e)=>setAdminEmail(e.target.value)} />
+						{formErrors.adminEmail && <div className="text-xs text-red-600 mt-1">{formErrors.adminEmail}</div>}
+					</div>
+					<div>
+						<label className="block text-sm mb-1 text-amber-900">Admin Password</label>
+						<input type="password" className={"w-full border rounded px-3 py-2 " + (formErrors.adminPassword ? 'border-red-500' : 'border-amber-300')} placeholder="Password" value={adminPassword} onChange={(e)=>setAdminPassword(e.target.value)} />
+						{formErrors.adminPassword && <div className="text-xs text-red-600 mt-1">{formErrors.adminPassword}</div>}
+					</div>
+					<div>
+						<label className="block text-sm mb-1 text-amber-900">Admin Name</label>
+						<input className="w-full border border-amber-300 rounded px-3 py-2" placeholder="Optional" value={adminName} onChange={(e)=>setAdminName(e.target.value)} />
+					</div>
+				</div>
 				<div className="md:col-span-3 flex justify-end">
 					<button className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">Create Company</button>
 				</div>
 			</form>
 			<div className="grid gap-3">
 				{items.map((c) => (
-					<div key={c.id} className="border border-amber-300 rounded p-3 bg-white flex justify-between">
-						<div className="font-medium text-amber-900">{c.name}</div>
-						<div className="opacity-70">{c.code}</div>
+					<div key={c.id} className="border border-amber-300 rounded p-3 bg-white flex justify-between items-center">
+						<div>
+							<div className="font-medium text-amber-900">{c.name}</div>
+							<div className="opacity-70 text-sm">{c.code}</div>
+						</div>
+						{c.logo && <img alt="logo" src={c.logo} className="h-8" />}
 					</div>
 				))}
 			</div>

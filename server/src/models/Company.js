@@ -15,6 +15,7 @@ const companySchema = new Schema({
 		zip: { type: String },
 	},
 	description: { type: String },
+	logo: { type: String },
 }, { timestamps: true });
 
 export const Company = model('Company', companySchema);

@@ -8,6 +8,7 @@ import EmployeesPage from './pages/EmployeesPage.jsx';
 import AttendancePage from './pages/AttendancePage.jsx';
 import LeavesPage from './pages/LeavesPage.jsx';
 import TasksPage from './pages/TasksPage.jsx';
+import TaskAssign from './pages/TaskAssign.jsx';
 import DocumentsPage from './pages/DocumentsPage.jsx';
 // import PayrollPage from './pages/PayrollPage.jsx';
 import NotificationsPage from './pages/NotificationsPage.jsx';
@@ -31,8 +32,9 @@ export default function App() {
 				<Route path="employees" element={<EmployeesPage />} />
 				        <Route path="attendance" element={<AttendancePage />} />
         <Route path="attendance/company" element={<ProtectedRoute roles={["COMPANY_ADMIN","SUPER_ADMIN","SUPERVISOR"]}><AttendanceCompany /></ProtectedRoute>} />
-				<Route path="leaves" element={<LeavesPage />} />
+				<Route path="leaves" element={<ProtectedRoute roles={['SUPER_ADMIN','SUPERVISOR']}><LeavesPage /></ProtectedRoute>} />
 				<Route path="tasks" element={<TasksPage />} />
+				<Route path="tasks/assign" element={<ProtectedRoute roles={["SUPERVISOR","COMPANY_ADMIN","SUPER_ADMIN"]}><TaskAssign /></ProtectedRoute>} />
 				<Route path="documents" element={<DocumentsPage />} />
 				{/* <Route path="payroll" element={<ProtectedRoute roles={['COMPANY_ADMIN','SUPER_ADMIN']}><PayrollPage /></ProtectedRoute>} /> */}
 				<Route path="notifications" element={<NotificationsPage />} />

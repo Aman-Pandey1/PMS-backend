@@ -29,3 +29,9 @@ export async function addTaskUpdate(id, text) {
 	const { data } = await api.post(`/tasks/${id}/updates`, { text });
 	return data;
 }
+
+export async function filterTasks(params = {}) {
+	const query = new URLSearchParams(params).toString();
+	const { data } = await api.get(`/tasks/filter${query ? `?${query}` : ''}`);
+	return data.items;
+}
