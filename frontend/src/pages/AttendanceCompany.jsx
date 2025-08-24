@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext.jsx';
+import { reverseGeocode, geocodeCache } from '../lib/geocode.js';
 
 export default function AttendanceCompany() {
 	const { user } = useAuth();
 	const [start, setStart] = useState('');
 	const [end, setEnd] = useState('');
 	const [items, setItems] = useState([]);
+    const [cities, setCities] = useState({});
 
 	async function load() {
 		const { getCompanyAttendance } = await import('../services/attendance.js');
@@ -16,6 +18,27 @@ export default function AttendanceCompany() {
 	}
 
 	useEffect(() => { load().catch(console.error); }, []);
+
+    useEffect(() => {
+        (async () => {
+            const map = {};
+            for (const r of items) {
+                const inC = r.checkInLocation?.coordinates;
+                if (inC) {
+                    const [lon, lat] = inC;
+                    const key = `${lat.toFixed(4)},${lon.toFixed(4)}`;
+                    map[key] = geocodeCache.get(key) || await reverseGeocode(lat, lon);
+                }
+                const outC = r.checkOutLocation?.coordinates;
+                if (outC) {
+                    const [lon, lat] = outC;
+                    const key = `${lat.toFixed(4)},${lon.toFixed(4)}`;
+                    map[key] = geocodeCache.get(key) || await reverseGeocode(lat, lon);
+                }
+            }
+            setCities(map);
+        })();
+    }, [items]);
 
 	return (
 		<div className="space-y-4">
@@ -51,8 +74,16 @@ export default function AttendanceCompany() {
 								<td className="p-2 border-t border-amber-100">{r.date}</td>
 								<td className="p-2 border-t border-amber-100">{r.checkInAt ? new Date(r.checkInAt).toLocaleString() : '-'}</td>
 								<td className="p-2 border-t border-amber-100">{r.checkOutAt ? new Date(r.checkOutAt).toLocaleString() : '-'}</td>
-								<td className="p-2 border-t border-amber-100">{r.checkInLocation?.coordinates ? (<a className="text-amber-800 underline" target="_blank" href={`https://maps.google.com/?q=${r.checkInLocation.coordinates[1]},${r.checkInLocation.coordinates[0]}`}>{r.checkInLocation.coordinates.join(', ')}</a>) : '-'}</td>
-								<td className="p-2 border-t border-amber-100">{r.checkOutLocation?.coordinates ? (<a className="text-amber-800 underline" target="_blank" href={`https://maps.google.com/?q=${r.checkOutLocation.coordinates[1]},${r.checkOutLocation.coordinates[0]}`}>{r.checkOutLocation.coordinates.join(', ')}</a>) : '-'}</td>
+								<td className="p-2 border-t border-amber-100">{r.checkInLocation?.coordinates ? (
+									<a className="text-amber-800 underline" target="_blank" href={`https://maps.google.com/?q=${r.checkInLocation.coordinates[1]},${r.checkInLocation.coordinates[0]}`}>
+										{(() => { const [lon, lat] = r.checkInLocation.coordinates; const key = `${lat.toFixed(4)},${lon.toFixed(4)}`; return `${lat.toFixed(4)}, ${lon.toFixed(4)}${cities[key]?` · ${cities[key]}`:''}`; })()}
+									</a>
+								) : '-'}</td>
+								<td className="p-2 border-t border-amber-100">{r.checkOutLocation?.coordinates ? (
+									<a className="text-amber-800 underline" target="_blank" href={`https://maps.google.com/?q=${r.checkOutLocation.coordinates[1]},${r.checkOutLocation.coordinates[0]}`}>
+										{(() => { const [lon, lat] = r.checkOutLocation.coordinates; const key = `${lat.toFixed(4)},${lon.toFixed(4)}`; return `${lat.toFixed(4)}, ${lon.toFixed(4)}${cities[key]?` · ${cities[key]}`:''}`; })()}
+									</a>
+								) : '-'}</td>
 								<td className="p-2 border-t border-amber-100">{r.dailyReport?.text || '-'}</td>
 							</tr>
 						))}

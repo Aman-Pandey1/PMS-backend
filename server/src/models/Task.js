@@ -14,7 +14,7 @@ const taskSchema = new Schema({
 	status: { type: String, enum: ['OPEN', 'IN_PROGRESS', 'BLOCKED', 'DONE'], default: 'OPEN', index: true },
 	progress: { type: Number, min: 0, max: 100, default: 0 },
 	remarks: { type: String },
-	updates: { type: [ { by: { type: Schema.Types.ObjectId, ref: 'User' }, text: String, at: Date } ], default: [] },
+	updates: { type: [ { by: { type: Schema.Types.ObjectId, ref: 'User' }, text: String, at: Date, action: String, note: String, status: { type: String, enum: ['OPEN','IN_PROGRESS','BLOCKED','DONE'] }, progress: { type: Number, min: 0, max: 100 } } ], default: [] },
 	watchers: { type: [Schema.Types.ObjectId], default: [] },
 }, { timestamps: true });
 

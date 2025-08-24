@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { reverseGeocode } from '../lib/geocode.js';
 
 export default function AttendancePage() {
 	const [checkedIn, setCheckedIn] = useState(false);
@@ -6,6 +7,7 @@ export default function AttendancePage() {
 	const [recent, setRecent] = useState([]);
 	const [elapsed, setElapsed] = useState(0);
 	const [coords, setCoords] = useState(null);
+    const [city, setCity] = useState('');
 	const timerRef = useRef(null);
 	const startRef = useRef(null);
 
@@ -42,6 +44,7 @@ export default function AttendancePage() {
 			const pos = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject));
 			const { longitude, latitude } = pos.coords;
 			setCoords({ longitude, latitude });
+            reverseGeocode(latitude, longitude).then(setCity).catch(()=>{});
 			if (!checkedIn) {
 				await (await import('../services/attendance.js')).checkIn(longitude, latitude);
 				setCheckedIn(true);
@@ -73,7 +76,7 @@ export default function AttendancePage() {
 			<div className="flex items-center gap-4">
 				<button className="bg-amber-700 hover:bg-amber-800 text-white px-3 py-2 rounded" onClick={toggle} disabled={checkedIn && !report && elapsed>0 && false}>{checkedIn ? 'Check out' : 'Check in'}</button>
 				{checkedIn && <div className="text-amber-900 font-mono">Timer: {format(elapsed)}</div>}
-				{coords && <div className="text-sm opacity-70">Location: {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}</div>}
+				{coords && <div className="text-sm opacity-70">Location: {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}{city?` · ${city}`:''}</div>}
 			</div>
 			<textarea className="w-full border border-amber-300 rounded p-2" placeholder="Daily report (required to check out)" value={report} onChange={(e) => setReport(e.target.value)} />
 			<div className="text-sm opacity-70">Status: {checkedIn ? 'Checked in' : 'Not checked in'}</div>

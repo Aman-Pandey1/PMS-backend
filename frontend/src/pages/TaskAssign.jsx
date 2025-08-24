@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
+import { useAuth } from '../contexts/AuthContext.jsx';
 
 export default function TaskAssign() {
+	const { user } = useAuth();
 	const [query, setQuery] = useState('');
 	const [options, setOptions] = useState([]);
 	const [assigneeId, setAssigneeId] = useState('');
@@ -16,12 +18,23 @@ export default function TaskAssign() {
 		const id = setTimeout(async () => {
 			if (query.trim().length < 2) { setOptions([]); return; }
 			try {
-				const { searchUsers } = await import('../services/users.js');
-				setOptions(await searchUsers(query));
+				if (user?.role === 'SUPERVISOR') {
+					const { mySubordinates } = await import('../services/users.js');
+					const all = await mySubordinates();
+					const filtered = all
+						.filter(u => (u.fullName?.toLowerCase().includes(query.toLowerCase()) || u.email?.toLowerCase().includes(query.toLowerCase())))
+						.map(u => ({ ...u, role: 'EMPLOYEE' }));
+					setOptions(filtered);
+				} else {
+					const { searchUsers } = await import('../services/users.js');
+					const found = await searchUsers(query);
+					// company admin and above: list only employees
+					setOptions(found.filter(u => u.role ? u.role === 'EMPLOYEE' : true));
+				}
 			} catch {}
 		}, 250);
 		return () => clearTimeout(id);
-	}, [query]);
+	}, [query, user?.role]);
 
 	async function submit(e) {
 		e.preventDefault();
