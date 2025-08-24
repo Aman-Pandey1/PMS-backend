@@ -30,6 +30,9 @@ export async function createUser(req, res) {
 		}
 		targetCompanyId = req.user.companyId;
 	}
+	if (req.user?.role === 'SUPER_ADMIN' && !targetCompanyId) {
+		return res.status(400).json({ error: 'companyId required for Super Admin user creation' });
+	}
 	const passwordHash = await argon2.hash(password);
 	const ancestors = [];
 	let depth = 0;
