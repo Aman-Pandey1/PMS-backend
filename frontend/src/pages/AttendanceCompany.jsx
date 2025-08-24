@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { reverseGeocode, geocodeCache } from '../lib/geocode.js';
 
 export default function AttendanceCompany() {
 	const { user } = useAuth();
-	const [start, setStart] = useState('');
-	const [end, setEnd] = useState('');
+	const today = new Date().toISOString().slice(0,10);
+	const [start, setStart] = useState(today);
+	const [end, setEnd] = useState(today);
 	const [items, setItems] = useState([]);
     const [cities, setCities] = useState({});
     const [errMsg, setErrMsg] = useState('');
@@ -13,6 +14,8 @@ export default function AttendanceCompany() {
     const [companyId, setCompanyId] = useState('');
     const [employees, setEmployees] = useState([]);
     const [userId, setUserId] = useState('');
+    const [employeeQuery, setEmployeeQuery] = useState('');
+    const tableRef = useRef(null);
 
 	async function load() {
 		try {
@@ -23,13 +26,14 @@ export default function AttendanceCompany() {
 			if (end) params.end = end;
             if (user?.role === 'SUPER_ADMIN' && companyId) params.companyId = companyId;
             if (userId) params.userId = userId;
+            if (user?.role === 'SUPER_ADMIN' && !companyId) { setItems([]); setErrMsg('Select a company'); return; }
 			setItems(await getCompanyAttendance(params));
 		} catch (e) {
 			setErrMsg(e?.response?.data?.error || 'Failed to load attendance');
 		}
 	}
 
-	useEffect(() => { load().catch(()=>{}); }, []);
+	useEffect(() => { load().catch(()=>{}); }, [companyId]);
     useEffect(() => { (async ()=>{ if (user?.role === 'SUPER_ADMIN') { try { const { listCompanies } = await import('../services/companies.js'); setCompanies(await listCompanies()); } catch {} } })(); }, [user?.role]);
 
     // Load employees list for filters
@@ -77,6 +81,34 @@ export default function AttendanceCompany() {
         })();
     }, [items]);
 
+    const filteredItems = items.filter(r => {
+        if (employeeQuery && !(r.user?.fullName || '').toLowerCase().includes(employeeQuery.toLowerCase())) return false;
+        return true;
+    });
+
+    function downloadPdf() {
+        try {
+            const w = window.open('', '_blank');
+            if (!w) return;
+            const html = `<!doctype html><html><head><title>Attendance ${start}${end && start!==end ? ' - '+end : ''}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 16px; }
+                    table { width: 100%; border-collapse: collapse; }
+                    th, td { border: 1px solid #ddd; padding: 8px; font-size: 12px; }
+                    th { background: #f7e7ce; }
+                    h1 { font-size: 16px; }
+                </style></head><body>
+                <h1>Company Attendance</h1>
+                <div>Date: ${start}${end && start!==end ? ' - '+end : ''}</div>
+                ${tableRef.current ? tableRef.current.outerHTML : ''}
+                <script>window.onload = () => { window.print(); setTimeout(()=>window.close(), 300); };</script>
+            </body></html>`;
+            w.document.open();
+            w.document.write(html);
+            w.document.close();
+        } catch {}
+    }
+
 	return (
 		<div className="space-y-4">
 			<h1 className="text-2xl font-bold">Company Attendance</h1>
@@ -100,6 +132,10 @@ export default function AttendanceCompany() {
                         </select>
                     </div>
                 )}
+                <div>
+                    <label className="block text-sm text-amber-900">Employee name</label>
+                    <input value={employeeQuery} onChange={(e)=>setEmployeeQuery(e.target.value)} className="border border-amber-300 rounded px-3 py-2" placeholder="Search name" />
+                </div>
 				<div>
 					<label className="block text-sm text-amber-900">Start</label>
 					<input type="date" className="border border-amber-300 rounded px-3 py-2" value={start} onChange={(e)=>setStart(e.target.value)} />
@@ -109,9 +145,10 @@ export default function AttendanceCompany() {
 					<input type="date" className="border border-amber-300 rounded px-3 py-2" value={end} onChange={(e)=>setEnd(e.target.value)} />
 				</div>
 				<button onClick={load} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">Filter</button>
+                <button onClick={downloadPdf} className="border border-amber-300 text-amber-900 rounded px-4 py-2">Download PDF</button>
 			</div>
 			<div className="overflow-x-auto bg-white border border-amber-300 rounded">
-				<table className="min-w-[900px] w-full">
+				<table ref={tableRef} className="min-w-[900px] w-full">
 					<thead>
 						<tr className="bg-amber-50 text-amber-900">
 							<th className="text-left p-2 border-b border-amber-200">User</th>
@@ -124,12 +161,12 @@ export default function AttendanceCompany() {
 						</tr>
 					</thead>
 					<tbody>
-                        {items.length === 0 && (
+                        {filteredItems.length === 0 && (
                             <tr>
                                 <td colSpan={7} className="p-4 text-center text-sm opacity-70">No attendance records for the selected period.</td>
                             </tr>
                         )}
-						{items.map((r) => (
+						{filteredItems.map((r) => (
 							<tr key={r._id}>
 								<td className="p-2 border-t border-amber-100">{r.user?.fullName || r.userId}</td>
 								<td className="p-2 border-t border-amber-100">{r.date}</td>
