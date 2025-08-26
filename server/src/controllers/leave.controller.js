@@ -18,19 +18,17 @@ export async function approveLeave(req, res) {
 	const { id } = req.params;
 	const item = await LeaveRequest.findById(id);
 	if (!item) return res.status(404).json({ error: 'Not found' });
-	const approverId = req.user.uid;
-	const idx = item.approverChain.findIndex(a => String(a) === String(approverId));
-	if (idx === -1 && req.user.role !== 'SUPER_ADMIN') {
-		return res.status(403).json({ error: 'Not an approver' });
-	}
-	// allow approval from current or higher level approver
-	const effectiveIdx = req.user.role === 'SUPER_ADMIN' ? item.approverChain.length - 1 : idx;
-	if (effectiveIdx < item.currentLevel) return res.status(403).json({ error: 'Already processed by a higher approver' });
-	item.approvals.push({ approverId, status: 'APPROVED', at: new Date() });
-	item.currentLevel = effectiveIdx + 1;
-	if (item.currentLevel >= item.approverChain.length) {
+	// Fast-path: company-scoped approvers can approve any leave in their company
+	if (req.user.role !== 'SUPER_ADMIN') {
+		if (String(item.companyId) !== String(req.user.companyId)) return res.status(403).json({ error: 'Forbidden' });
+		item.approvals.push({ approverId: req.user.uid, status: 'APPROVED', at: new Date() });
 		item.status = 'APPROVED';
+		await item.save();
+		return res.json(item);
 	}
+	// SUPER_ADMIN can approve regardless of chain
+	item.approvals.push({ approverId: req.user.uid, status: 'APPROVED', at: new Date() });
+	item.status = 'APPROVED';
 	await item.save();
 	res.json(item);
 }
@@ -40,12 +38,14 @@ export async function rejectLeave(req, res) {
 	const { id } = req.params;
 	const item = await LeaveRequest.findById(id);
 	if (!item) return res.status(404).json({ error: 'Not found' });
-	const approverId = req.user.uid;
-	const idx = item.approverChain.findIndex(a => String(a) === String(approverId));
-	if (idx === -1 && req.user.role !== 'SUPER_ADMIN') {
-		return res.status(403).json({ error: 'Not an approver' });
+	if (req.user.role !== 'SUPER_ADMIN') {
+		if (String(item.companyId) !== String(req.user.companyId)) return res.status(403).json({ error: 'Forbidden' });
+		item.approvals.push({ approverId: req.user.uid, status: 'REJECTED', at: new Date() });
+		item.status = 'REJECTED';
+		await item.save();
+		return res.json(item);
 	}
-	item.approvals.push({ approverId, status: 'REJECTED', at: new Date() });
+	item.approvals.push({ approverId: req.user.uid, status: 'REJECTED', at: new Date() });
 	item.status = 'REJECTED';
 	await item.save();
 	res.json(item);
