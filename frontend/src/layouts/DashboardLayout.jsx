@@ -6,6 +6,9 @@ import clsx from 'clsx';
 export default function DashboardLayout() {
 	const { user, logout } = useAuth();
 	const [companyName, setCompanyName] = useState('');
+	const [unread, setUnread] = useState([]);
+	const [showPopup, setShowPopup] = useState(false);
+
 	useEffect(() => {
 		(async () => {
 			try {
@@ -17,6 +20,31 @@ export default function DashboardLayout() {
 			} catch {}
 		})();
 	}, [user?.companyId, user?.role]);
+
+	useEffect(() => {
+		(async () => {
+			try {
+				if (!user) return;
+				const { listNotifications } = await import('../services/notifications.js');
+				const items = await listNotifications();
+				const pending = (items || []).filter(n => !n.readAt);
+				if (pending.length) {
+					setUnread(pending);
+					setShowPopup(true);
+				}
+			} catch {}
+		})();
+	}, [user?.id]);
+
+	async function dismissAndMarkAllRead() {
+		try {
+			const { markNotificationRead } = await import('../services/notifications.js');
+			await Promise.all(unread.map(n => markNotificationRead(n._id || n.id)));
+		} catch {}
+		setShowPopup(false);
+		setUnread([]);
+	}
+
 	return (
 		<div className="min-h-screen grid grid-cols-[260px_1fr] bg-zinc-50">
 			<aside className="bg-amber-700 text-white p-4">
@@ -57,6 +85,29 @@ export default function DashboardLayout() {
 			<main className="p-6">
 				<Outlet />
 			</main>
+
+			{showPopup && unread.length > 0 && (
+				<div className="fixed inset-0 bg-black/40 grid place-items-center p-4 z-50">
+					<div className="bg-white rounded-lg border border-amber-300 max-w-lg w-full max-h-[80vh] overflow-auto">
+						<div className="px-4 py-3 border-b border-amber-200 bg-amber-50 text-amber-900 flex items-center justify-between">
+							<div className="font-medium">Notifications</div>
+							<button onClick={dismissAndMarkAllRead} className="text-amber-900">✕</button>
+						</div>
+						<div className="p-3 divide-y">
+							{unread.map((n) => (
+								<div key={n._id || n.id} className="py-2">
+									<div className="text-sm font-medium text-amber-900">{n.title || n.type}</div>
+									<div className="text-sm opacity-80">{n.body}</div>
+									<div className="text-xs opacity-60 mt-1">{new Date(n.createdAt).toLocaleString()}</div>
+								</div>
+							))}
+						</div>
+						<div className="p-3 border-t border-amber-200 flex justify-end gap-2">
+							<button onClick={dismissAndMarkAllRead} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">Mark all read</button>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }
