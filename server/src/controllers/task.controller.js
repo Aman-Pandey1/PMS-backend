@@ -1,5 +1,6 @@
 import { Task } from '../models/Task.js';
 import { User } from '../models/User.js';
+import { Notification } from '../models/Notification.js';
 
 export async function createTask(req, res) {
 	const { assigneeId, description, deadline, priority, projectName, startDate, remarks } = req.body || {};
@@ -17,6 +18,10 @@ export async function createTask(req, res) {
 		}
 	}
 	const item = await Task.create({ companyId: req.user.companyId, creatorId: req.user.uid, assigneeId, projectName, description, startDate, deadline, priority, remarks, status: 'OPEN', updates: [], watchers: [] });
+	// notify assignee
+	try {
+		await Notification.create({ userId: assigneeId, type: 'TASK_ASSIGNED', title: 'New task assigned', body: projectName || description?.slice(0,100) || 'Task assigned', data: { taskId: item._id } });
+	} catch {}
 	res.status(201).json(item);
 }
 
@@ -66,11 +71,26 @@ export async function addTaskUpdate(req, res) {
 	if (status) item.status = status;
 	if (typeof progress === 'number') item.progress = Math.max(0, Math.min(100, progress));
 	await item.save();
+	// notify managers/admins when employee submits update
+	try {
+		if (req.user.role === 'EMPLOYEE') {
+			const employee = await User.findById(req.user.uid).select('managerId companyId');
+			const notifyUsers = new Set();
+			if (employee?.managerId) notifyUsers.add(String(employee.managerId));
+			const admins = await User.find({ companyId: employee.companyId, role: 'COMPANY_ADMIN' }).select('_id');
+			admins.forEach(a => notifyUsers.add(String(a._id)));
+			await Promise.all(Array.from(notifyUsers).map(uid => Notification.create({ userId: uid, type: 'TASK_UPDATE', title: 'Daily task update', body: projectNameOr(item), data: { taskId: item._id } })));
+		}
+	} catch {}
 	const populated = await Task.findById(id)
 		.populate('assigneeId', 'fullName email')
 		.populate('creatorId', 'fullName email')
 		.populate('updates.by', 'fullName email');
 	res.json(populated);
+}
+
+function projectNameOr(task) {
+	return task.projectName || (task.description ? String(task.description).slice(0, 100) : 'Task');
 }
 
 export async function filterTasks(req, res) {

@@ -1,5 +1,6 @@
 import { LeaveRequest } from '../models/LeaveRequest.js';
 import { User } from '../models/User.js';
+import { Notification } from '../models/Notification.js';
 
 export async function requestLeave(req, res) {
 	const userId = req.user.uid;
@@ -10,6 +11,14 @@ export async function requestLeave(req, res) {
 	const user = await User.findById(userId);
 	const approverChain = (user?.ancestors || []).reverse();
 	const item = await LeaveRequest.create({ userId, companyId, startDate, endDate, reason, status: 'PENDING', approverChain, currentLevel: 0 });
+	// notify manager and company admins
+	try {
+		const notifyUsers = new Set();
+		if (user?.managerId) notifyUsers.add(String(user.managerId));
+		const admins = await User.find({ companyId, role: 'COMPANY_ADMIN' }).select('_id');
+		admins.forEach(a => notifyUsers.add(String(a._id)));
+		await Promise.all(Array.from(notifyUsers).map(uid => Notification.create({ userId: uid, type: 'LEAVE_APPLIED', title: 'Leave request submitted', body: reason?.slice(0,100) || 'Leave request', data: { leaveId: item._id } })));
+	} catch {}
 	res.status(201).json(item);
 }
 
@@ -24,12 +33,14 @@ export async function approveLeave(req, res) {
 		item.approvals.push({ approverId: req.user.uid, status: 'APPROVED', at: new Date() });
 		item.status = 'APPROVED';
 		await item.save();
+		try { await Notification.create({ userId: item.userId, type: 'LEAVE_APPROVED', title: 'Leave approved', body: 'Your leave request is approved', data: { leaveId: item._id } }); } catch {}
 		return res.json(item);
 	}
-	// SUPER_ADMIN can approve regardless of chain
+	// SUPER_ADMIN
 	item.approvals.push({ approverId: req.user.uid, status: 'APPROVED', at: new Date() });
 	item.status = 'APPROVED';
 	await item.save();
+	try { await Notification.create({ userId: item.userId, type: 'LEAVE_APPROVED', title: 'Leave approved', body: 'Your leave request is approved', data: { leaveId: item._id } }); } catch {}
 	res.json(item);
 }
 
@@ -43,11 +54,13 @@ export async function rejectLeave(req, res) {
 		item.approvals.push({ approverId: req.user.uid, status: 'REJECTED', at: new Date() });
 		item.status = 'REJECTED';
 		await item.save();
+		try { await Notification.create({ userId: item.userId, type: 'LEAVE_REJECTED', title: 'Leave rejected', body: 'Your leave request was rejected', data: { leaveId: item._id } }); } catch {}
 		return res.json(item);
 	}
 	item.approvals.push({ approverId: req.user.uid, status: 'REJECTED', at: new Date() });
 	item.status = 'REJECTED';
 	await item.save();
+	try { await Notification.create({ userId: item.userId, type: 'LEAVE_REJECTED', title: 'Leave rejected', body: 'Your leave request was rejected', data: { leaveId: item._id } }); } catch {}
 	res.json(item);
 }
 
