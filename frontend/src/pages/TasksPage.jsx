@@ -45,12 +45,9 @@ export default function TasksPage() {
 				setTasksCreated(c);
 				try {
 					if (user?.role !== 'EMPLOYEE') {
-						const { listUsers, mySubordinates } = await import('../services/users.js');
-						if (user?.role === 'SUPERVISOR') {
-							setSubordinates(await mySubordinates());
-						} else {
-							setSubordinates(await listUsers());
-						}
+						const { listUsers } = await import('../services/users.js');
+						// For both supervisor and admin, allow company-wide selection
+						setSubordinates(await listUsers());
 					}
 				} catch {}
 			} catch (e) {
@@ -210,7 +207,7 @@ export default function TasksPage() {
 			{/* Tabs and Filters */}
 			<div className="flex gap-2 items-center">
 				<div className="opacity-70 text-sm">Filter:</div>
-				<select value={filterStatus} onChange={(e)=>setFilterStatus(e.target.value)} className="border border-amber-300 rounded px-2 py-1">
+				<select value={filterStatus} onChange={(e)=>{ setFilterStatus(e.target.value); setPage(1); }} className="border border-amber-300 rounded px-2 py-1">
 					<option value="">All</option>
 					<option value="OPEN">OPEN</option>
 					<option value="IN_PROGRESS">IN_PROGRESS</option>
@@ -221,11 +218,11 @@ export default function TasksPage() {
 					<>
 						<input value={projectQuery} onChange={(e)=>setProjectQuery(e.target.value)} placeholder="Search by project" className="border border-amber-300 rounded px-3 py-2" />
 						<button onClick={searchCompanyTasks} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-2">Search</button>
-						<button onClick={()=>setTab('company')} className={(tab==='company'?'bg-amber-700 text-white':'bg-white text-amber-900') + ' border border-amber-300 rounded px-3 py-2'}>Company</button>
+						<button onClick={()=>{ setTab('company'); setPage(1); }} className={(tab==='company'?'bg-amber-700 text-white':'bg-white text-amber-900') + ' border border-amber-300 rounded px-3 py-2'}>Company</button>
 					</>
 				)}
-				<button onClick={()=>setTab('assigned')} className={(tab==='assigned'?'bg-amber-700 text-white':'bg-white text-amber-900') + ' border border-amber-300 rounded px-3 py-2'}>Assigned</button>
-				<button onClick={()=>setTab('created')} className={(tab==='created'?'bg-amber-700 text-white':'bg-white text-amber-900') + ' border border-amber-300 rounded px-3 py-2'}>Created</button>
+				<button onClick={()=>{ setTab('assigned'); setPage(1); }} className={(tab==='assigned'?'bg-amber-700 text-white':'bg-white text-amber-900') + ' border border-amber-300 rounded px-3 py-2'}>Assigned</button>
+				<button onClick={()=>{ setTab('created'); setPage(1); }} className={(tab==='created'?'bg-amber-700 text-white':'bg-white text-amber-900') + ' border border-amber-300 rounded px-3 py-2'}>Created</button>
 			</div>
 
 			{/* Table */}
@@ -270,7 +267,7 @@ export default function TasksPage() {
 			{/* Modal */}
 			{selectedTask && (
 				<div className="fixed inset-0 bg-black/40 grid place-items-center p-4">
-					<div className="bg-white rounded-lg border border-amber-300 max-w-2xl w-full">
+					<div className="bg-white rounded-lg border border-amber-300 max-w-2xl w-full max-h-[80vh] overflow-auto">
 						<div className="px-4 py-3 border-b border-amber-200 flex justify-between items-center bg-amber-50 text-amber-900">
 							<div className="font-medium">Task</div>
 							<button onClick={() => setSelectedTask(null)} className="text-amber-900">✕</button>

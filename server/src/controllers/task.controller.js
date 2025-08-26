@@ -4,14 +4,8 @@ import { Notification } from '../models/Notification.js';
 
 export async function createTask(req, res) {
 	const { assigneeId, description, deadline, priority, projectName, startDate, remarks } = req.body || {};
-	// Only allow assigning: company admin to any in company; supervisor to direct subordinate
-	if (req.user.role === 'SUPERVISOR') {
-		const assignee = await User.findById(assigneeId);
-		if (!assignee || String(assignee.managerId) !== req.user.uid) {
-			return res.status(403).json({ error: 'Assignee must be a direct subordinate' });
-		}
-	}
-	if (req.user.role === 'COMPANY_ADMIN') {
+	// Allow assigning: company admin to any in company; supervisor to any in company
+	if (req.user.role === 'SUPERVISOR' || req.user.role === 'COMPANY_ADMIN') {
 		const assignee = await User.findById(assigneeId);
 		if (!assignee || String(assignee.companyId) !== String(req.user.companyId)) {
 			return res.status(403).json({ error: 'Assignee must belong to your company' });
