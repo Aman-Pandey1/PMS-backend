@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 
 export default function TasksPage() {
 	const { user } = useAuth();
-	const [tab, setTab] = useState('assigned'); // 'assigned' | 'created' | 'company'
+	const [tab, setTab] = useState(() => (['COMPANY_ADMIN','SUPERVISOR','SUPER_ADMIN'].includes(localStorage.getItem('auth:user')? (JSON.parse(localStorage.getItem('auth:user'))?.role||'') : '') ? 'company' : 'assigned')); // default tab
 	const [tasksAssigned, setTasksAssigned] = useState([]);
 	const [tasksCreated, setTasksCreated] = useState([]);
 	const [companyTasks, setCompanyTasks] = useState([]);
@@ -37,16 +37,18 @@ export default function TasksPage() {
 			setLoading(true);
 			try {
 				const svc = await import('../services/tasks.js');
-				const [a, c] = await Promise.all([
-					svc.tasksAssignedToMe(),
-					svc.tasksCreatedByMe(),
-				]);
-				setTasksAssigned(a);
-				setTasksCreated(c);
+				const calls = [svc.tasksAssignedToMe(), svc.tasksCreatedByMe()];
+				// Preload company-wide tasks for supervisors/admins
+				if (user?.role && user.role !== 'EMPLOYEE') {
+					calls.push(svc.filterTasks({}));
+				}
+				const results = await Promise.all(calls);
+				setTasksAssigned(results[0] || []);
+				setTasksCreated(results[1] || []);
+				if (results[2]) setCompanyTasks(results[2]);
 				try {
 					if (user?.role !== 'EMPLOYEE') {
 						const { listUsers } = await import('../services/users.js');
-						// For both supervisor and admin, allow company-wide selection
 						setSubordinates(await listUsers());
 					}
 				} catch {}
@@ -73,6 +75,8 @@ export default function TasksPage() {
 			const { createTask } = await import('../services/tasks.js');
 			const created = await createTask({ assigneeId, projectName, description, startDate: startDate || undefined, deadline: deadline || undefined, priority, remarks });
 			setTasksCreated((prev) => [created, ...prev]);
+			// Also reflect in company tasks for visibility
+			setCompanyTasks((prev) => [created, ...prev]);
 			setAssigneeId(''); setProjectName(''); setDescription(''); setStartDate(''); setDeadline(''); setPriority('MEDIUM'); setRemarks(''); setErrors({});
 			setMsg('Task created');
 		} catch (e) {
