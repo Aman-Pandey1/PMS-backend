@@ -44,9 +44,6 @@ export default function DashboardLayout() {
 					)}
 					<SidebarLink to="/leaves" label="Leaves" />
 					<SidebarLink to="/tasks" label="Tasks" />
-					{(user?.role === 'SUPER_ADMIN' || user?.role === 'SUPERVISOR' || user?.role === 'COMPANY_ADMIN') && (
-						<SidebarLink to="/tasks/assign" label="Assign Task" />
-					)}
 					<SidebarLink to="/documents" label="Documents" />
 					<SidebarLink to="/notifications" label="Notifications" />
 					<SidebarLink to="/settings" label="Settings" />
