@@ -20,7 +20,10 @@ export default function LeavesPage() {
 			const leavesSvc = await import('../services/leaves.js');
 			setMyList(await leavesSvc.myLeaves());
 			if (user?.role === 'SUPER_ADMIN' || user?.role === 'COMPANY_ADMIN' || user?.role === 'SUPERVISOR') {
-				setCompanyList(await leavesSvc.companyLeaves());
+				const params = {};
+				if (user?.role === 'SUPER_ADMIN' && selectedCompany) params.companyId = selectedCompany;
+				if (selectedEmployee) params.userId = selectedEmployee;
+				setCompanyList(await leavesSvc.companyLeaves(params));
 			}
 		} catch (e) { console.error(e); }
 	}
@@ -72,12 +75,39 @@ export default function LeavesPage() {
     const coTotal = Math.max(1, Math.ceil(companyList.length / pageSize));
     const coPaged = companyList.slice((coPage-1)*pageSize, (coPage-1)*pageSize + pageSize);
 
+	// Super admin/company admin filters
+	const [companies, setCompanies] = useState([]);
+	const [selectedCompany, setSelectedCompany] = useState('');
+	const [employees, setEmployees] = useState([]);
+	const [selectedEmployee, setSelectedEmployee] = useState('');
+
+	useEffect(() => {
+		(async () => {
+			try {
+				if (user?.role === 'SUPER_ADMIN') {
+					const { listCompanies } = await import('../services/companies.js');
+					setCompanies(await listCompanies());
+				}
+				if (user?.role === 'COMPANY_ADMIN') {
+					const { listUsers } = await import('../services/users.js');
+					setEmployees(await listUsers());
+				} else if (user?.role === 'SUPER_ADMIN' && selectedCompany) {
+					const { listUsers } = await import('../services/users.js');
+					setEmployees(await listUsers(selectedCompany));
+				} else {
+					setEmployees([]);
+				}
+			} catch {}
+		})();
+	}, [user?.role, selectedCompany]);
+
 	return (
 		<div className="space-y-6">
 			<h1 className="text-2xl font-bold">Leaves</h1>
 			{msg && <div className="text-green-800 bg-green-50 border border-green-200 rounded p-2">{msg}</div>}
 			{errMsg && <div className="text-red-800 bg-red-50 border border-red-200 rounded p-2">{errMsg}</div>}
 			<div className="grid md:grid-cols-2 gap-6">
+				{(user?.role === 'EMPLOYEE' || user?.role === 'SUPERVISOR') && (
 				<div className="bg-white border border-amber-300 rounded p-4">
 					<div className="text-amber-900 font-medium mb-3">Apply Leave</div>
 					<form onSubmit={submit} className="grid gap-2">
@@ -93,6 +123,7 @@ export default function LeavesPage() {
 						<button className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-2 mt-2">Submit</button>
 					</form>
 				</div>
+				)}
 
 				<div className="bg-white border border-amber-300 rounded p-4 overflow-x-auto">
 					<div className="text-amber-900 font-medium mb-3">My Leaves</div>
@@ -127,6 +158,21 @@ export default function LeavesPage() {
 			{(user?.role === 'SUPER_ADMIN' || user?.role === 'COMPANY_ADMIN' || user?.role === 'SUPERVISOR') && (
 				<div className="bg-white border border-amber-300 rounded p-4 overflow-x-auto">
 					<div className="text-amber-900 font-medium mb-3">Company Leaves</div>
+					<div className="flex gap-2 items-center mb-3">
+						{user?.role === 'SUPER_ADMIN' && (
+							<select value={selectedCompany} onChange={(e)=>{ setSelectedCompany(e.target.value); setSelectedEmployee(''); }} className="border border-amber-300 rounded px-2 py-1">
+								<option value="">Select company</option>
+								{companies.map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
+							</select>
+						)}
+						{(user?.role === 'COMPANY_ADMIN' || (user?.role === 'SUPER_ADMIN' && selectedCompany)) && (
+							<select value={selectedEmployee} onChange={(e)=>setSelectedEmployee(e.target.value)} className="border border-amber-300 rounded px-2 py-1">
+								<option value="">All employees</option>
+								{employees.map(u => <option key={u.id} value={u.id}>{u.fullName || u.email || u.id}</option>)}
+							</select>
+						)}
+						<button onClick={load} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-1">Filter</button>
+					</div>
 					<table className="min-w-[800px] w-full">
 						<thead>
 							<tr className="bg-amber-50 text-amber-900">
