@@ -5,7 +5,7 @@ import { requireAuth, requireRoles } from '../middleware/auth.js';
 const r = Router();
 
 r.use(requireAuth);
-r.post('/', requireRoles('SUPERVISOR', 'COMPANY_ADMIN', 'SUPER_ADMIN'), createTask);
+r.post('/', requireRoles('SUPERVISOR'), createTask);
 r.get('/assigned-to-me', myAssignedTasks);
 r.get('/created-by-me', myCreatedTasks);
 r.get('/filter', filterTasks);

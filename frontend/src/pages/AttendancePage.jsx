@@ -82,18 +82,27 @@ export default function AttendancePage() {
     const totalPages = Math.max(1, Math.ceil(recent.length / pageSize));
     const paged = recent.slice((page-1)*pageSize, (page-1)*pageSize + pageSize);
 
+	// Super/Company admins should not see self check-in/out controls
+	const isSelfAttendanceVisible = true; // keep page but we'll hide actions below
+
 	return (
 		<div className="space-y-4">
 			<h1 className="text-2xl font-bold">Attendance</h1>
 			{msg && <div className="text-green-800 bg-green-50 border border-green-200 rounded p-2">{msg}</div>}
 			{errMsg && <div className="text-red-800 bg-red-50 border border-red-200 rounded p-2">{errMsg}</div>}
-			<div className="flex items-center gap-4">
-				<button className="bg-amber-700 hover:bg-amber-800 text-white px-3 py-2 rounded" onClick={toggle} disabled={checkedIn && !report && elapsed>0 && false}>{checkedIn ? 'Check out' : 'Check in'}</button>
-				{checkedIn && <div className="text-amber-900 font-mono">Timer: {format(elapsed)}</div>}
-				{coords && <div className="text-sm opacity-70">Location: {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}{city?` · ${city}`:''}</div>}
-			</div>
-			<textarea className="w-full border border-amber-300 rounded p-2" placeholder="Daily report (required to check out)" value={report} onChange={(e) => setReport(e.target.value)} />
-			<div className="text-sm opacity-70">Status: {checkedIn ? 'Checked in' : 'Not checked in'}</div>
+			{(window.localStorage.getItem('auth:user') ? (JSON.parse(window.localStorage.getItem('auth:user'))?.role) : '') === 'EMPLOYEE' ? (
+				<>
+					<div className="flex items-center gap-4">
+						<button className="bg-amber-700 hover:bg-amber-800 text-white px-3 py-2 rounded" onClick={toggle} disabled={checkedIn && !report && elapsed>0 && false}>{checkedIn ? 'Check out' : 'Check in'}</button>
+						{checkedIn && <div className="text-amber-900 font-mono">Timer: {format(elapsed)}</div>}
+						{coords && <div className="text-sm opacity-70">Location: {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}{city?` · ${city}`:''}</div>}
+					</div>
+					<textarea className="w-full border border-amber-300 rounded p-2" placeholder="Daily report (required to check out)" value={report} onChange={(e) => setReport(e.target.value)} />
+					<div className="text-sm opacity-70">Status: {checkedIn ? 'Checked in' : 'Not checked in'}</div>
+				</>
+			) : (
+				<div className="text-sm opacity-70">Admins can view company attendance under Work → Company Attendance.</div>
+			)}
 
 			<div className="bg-white border border-amber-300 rounded p-4 overflow-x-auto">
 				<div className="text-amber-900 font-medium mb-3">Recent</div>
