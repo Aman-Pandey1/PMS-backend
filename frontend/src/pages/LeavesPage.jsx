@@ -17,15 +17,28 @@ export default function LeavesPage() {
 
 	async function load() {
 		try {
+			setErrMsg('');
 			const leavesSvc = await import('../services/leaves.js');
-			setMyList(await leavesSvc.myLeaves());
-			if (user?.role === 'SUPER_ADMIN' || user?.role === 'COMPANY_ADMIN' || user?.role === 'SUPERVISOR') {
+			if (user?.role === 'EMPLOYEE' || user?.role === 'SUPERVISOR') {
+				setMyList(await leavesSvc.myLeaves());
+			} else {
+				setMyList([]);
+			}
+			if (user?.role === 'SUPER_ADMIN') {
+				if (!selectedCompany) {
+					setCompanyList([]);
+					setErrMsg('Select a company');
+				} else {
+					const params = { companyId: selectedCompany };
+					if (selectedEmployee) params.userId = selectedEmployee;
+					setCompanyList(await leavesSvc.companyLeaves(params));
+				}
+			} else if (user?.role === 'COMPANY_ADMIN' || user?.role === 'SUPERVISOR') {
 				const params = {};
-				if (user?.role === 'SUPER_ADMIN' && selectedCompany) params.companyId = selectedCompany;
 				if (selectedEmployee) params.userId = selectedEmployee;
 				setCompanyList(await leavesSvc.companyLeaves(params));
 			}
-		} catch (e) { console.error(e); }
+		} catch (e) { setErrMsg(e?.response?.data?.error || 'Failed to load leaves'); }
 	}
 
 	useEffect(() => {
@@ -125,6 +138,7 @@ export default function LeavesPage() {
 				</div>
 				)}
 
+				{(user?.role === 'EMPLOYEE' || user?.role === 'SUPERVISOR') && (
 				<div className="bg-white border border-amber-300 rounded p-4 overflow-x-auto">
 					<div className="text-amber-900 font-medium mb-3">My Leaves</div>
 					<table className="min-w-[600px] w-full">
@@ -153,6 +167,7 @@ export default function LeavesPage() {
                         </div>
                     </div>
 				</div>
+				)}
 			</div>
 
 			{(user?.role === 'SUPER_ADMIN' || user?.role === 'COMPANY_ADMIN' || user?.role === 'SUPERVISOR') && (

@@ -111,8 +111,11 @@ export default function TasksPage() {
 			setLoading(true); setErrMsg('');
 			const { filterTasks } = await import('../services/tasks.js');
 			const params = { projectName: projectQuery.trim() || undefined, status: filterStatus || undefined };
-			if (user?.role === 'SUPER_ADMIN' && selectedCompany) params.companyId = selectedCompany;
-			if (user?.role === 'SUPER_ADMIN' && selectedEmployee) params.assigneeId = selectedEmployee;
+			if (user?.role === 'SUPER_ADMIN') {
+				if (!selectedCompany) { setErrMsg('Select company'); setCompanyTasks([]); setTab('company'); setLoading(false); return; }
+				params.companyId = selectedCompany;
+				if (selectedEmployee) params.assigneeId = selectedEmployee;
+			}
 			const items = await filterTasks(params);
 			setCompanyTasks(items);
 			setTab('company');
@@ -323,7 +326,7 @@ export default function TasksPage() {
 			{/* Modal */}
 			{selectedTask && (
 				<div className="fixed inset-0 bg-black/40 grid place-items-center p-4">
-					<div className="bg-white rounded-lg border border-amber-300 max-w-2xl w-full max-h-[80vh] overflow-auto">
+					<div className="bg-white rounded-lg border border-amber-300 max-w-2xl w-full max-height-[80vh] overflow-auto">
 						<div className="px-4 py-3 border-b border-amber-200 flex justify-between items-center bg-amber-50 text-amber-900">
 							<div className="font-medium">Task</div>
 							<button onClick={() => setSelectedTask(null)} className="text-amber-900">✕</button>
