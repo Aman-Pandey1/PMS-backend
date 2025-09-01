@@ -53,6 +53,20 @@ export default function LeavesPage() {
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [user?.role]);
 
+	useEffect(() => {
+		(async () => {
+			try {
+				if (user?.role === 'SUPER_ADMIN' && selectedCompany) {
+					const leavesSvc = await import('../services/leaves.js');
+					const params = { companyId: selectedCompany };
+					if (selectedEmployee) params.userId = selectedEmployee;
+					setCompanyList(await leavesSvc.companyLeaves(params));
+					setCoPage(1);
+				}
+			} catch {}
+		})();
+	}, [user?.role, selectedCompany, selectedEmployee]);
+
 	async function submit(e) {
 		e.preventDefault();
 		setMsg(''); setErrMsg('');

@@ -151,6 +151,22 @@ export default function TasksPage() {
 		})();
 	}, [user?.role, selectedCompany]);
 
+	useEffect(() => {
+		(async () => {
+			try {
+				if (user?.role === 'SUPER_ADMIN' && selectedCompany) {
+					const { filterTasks } = await import('../services/tasks.js');
+					const params = { companyId: selectedCompany };
+					if (selectedEmployee) params.assigneeId = selectedEmployee;
+					const items = await filterTasks(params);
+					setCompanyTasks(items);
+					setTab('company');
+					setPage(1);
+				}
+			} catch {}
+		})();
+	}, [user?.role, selectedCompany, selectedEmployee]);
+
 	async function openTask(task) {
 		try {
 			const { getTask } = await import('../services/tasks.js');
