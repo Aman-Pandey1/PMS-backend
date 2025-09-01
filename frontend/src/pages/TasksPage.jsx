@@ -21,6 +21,11 @@ export default function TasksPage() {
 	const [errMsg, setErrMsg] = useState('');
     const [page, setPage] = useState(1);
     const pageSize = 10;
+    // SUPER_ADMIN filters
+    const [companies, setCompanies] = useState([]);
+    const [selectedCompany, setSelectedCompany] = useState('');
+    const [employees, setEmployees] = useState([]);
+    const [selectedEmployee, setSelectedEmployee] = useState('');
 
 	// Create form state
 	const [assigneeId, setAssigneeId] = useState('');
@@ -40,7 +45,9 @@ export default function TasksPage() {
 				const calls = [svc.tasksAssignedToMe(), svc.tasksCreatedByMe()];
 				// Preload company-wide tasks for supervisors/admins
 				if (user?.role && user.role !== 'EMPLOYEE') {
-					calls.push(svc.filterTasks({}));
+					const params = {};
+					// SUPER_ADMIN must select a company to view; defer initial load
+					if (user.role !== 'SUPER_ADMIN') calls.push(svc.filterTasks(params));
 				}
 				const results = await Promise.all(calls);
 				setTasksAssigned(results[0] || []);
@@ -49,7 +56,11 @@ export default function TasksPage() {
 				try {
 					if (user?.role !== 'EMPLOYEE') {
 						const { listUsers } = await import('../services/users.js');
-						setSubordinates(await listUsers());
+						if (user?.role === 'SUPER_ADMIN') {
+							setSubordinates([]);
+						} else {
+							setSubordinates(await listUsers());
+						}
 					}
 				} catch {}
 			} catch (e) {
@@ -99,7 +110,10 @@ export default function TasksPage() {
 		try {
 			setLoading(true); setErrMsg('');
 			const { filterTasks } = await import('../services/tasks.js');
-			const items = await filterTasks({ projectName: projectQuery.trim() || undefined, status: filterStatus || undefined });
+			const params = { projectName: projectQuery.trim() || undefined, status: filterStatus || undefined };
+			if (user?.role === 'SUPER_ADMIN' && selectedCompany) params.companyId = selectedCompany;
+			if (user?.role === 'SUPER_ADMIN' && selectedEmployee) params.assigneeId = selectedEmployee;
+			const items = await filterTasks(params);
 			setCompanyTasks(items);
 			setTab('company');
             setPage(1);
@@ -107,6 +121,32 @@ export default function TasksPage() {
 			setErrMsg(e?.response?.data?.error || 'Failed to load tasks');
 		} finally { setLoading(false); }
 	}
+
+	// SUPER_ADMIN company scope for viewing tasks and employees
+	useEffect(() => {
+		(async () => {
+			try {
+				if (user?.role === 'SUPER_ADMIN') {
+					const { listCompanies } = await import('../services/companies.js');
+					setCompanies(await listCompanies());
+				}
+			} catch {}
+		})();
+	}, [user?.role]);
+
+	useEffect(() => {
+		(async () => {
+			try {
+				if (user?.role === 'SUPER_ADMIN' && selectedCompany) {
+					const { listUsers } = await import('../services/users.js');
+					setEmployees(await listUsers(selectedCompany));
+				} else {
+					setEmployees([]);
+					setSelectedEmployee('');
+				}
+			} catch {}
+		})();
+	}, [user?.role, selectedCompany]);
 
 	async function openTask(task) {
 		try {
@@ -155,8 +195,8 @@ export default function TasksPage() {
 			{msg && <div className="text-green-800 bg-green-50 border border-green-200 rounded p-2">{msg}</div>}
 			{errMsg && <div className="text-red-800 bg-red-50 border border-red-200 rounded p-2">{errMsg}</div>}
 
-			{/* Create (hidden for employees) */}
-			{user?.role !== 'EMPLOYEE' && (
+			{/* Create (only supervisors) */}
+			{user?.role === 'SUPERVISOR' && (
 				<div className="bg-white border border-amber-300 rounded p-4">
 					<div className="text-amber-900 font-medium mb-3">Create Task</div>
 					<form onSubmit={createTask} className="grid md:grid-cols-4 gap-3">
@@ -220,6 +260,18 @@ export default function TasksPage() {
 				</select>
 				{(user?.role === 'COMPANY_ADMIN' || user?.role === 'SUPERVISOR' || user?.role === 'SUPER_ADMIN') && (
 					<>
+						{user?.role === 'SUPER_ADMIN' && (
+							<select value={selectedCompany} onChange={(e)=>{ setSelectedCompany(e.target.value); setSelectedEmployee(''); }} className="border border-amber-300 rounded px-2 py-1">
+								<option value="">Select company</option>
+								{companies.map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
+							</select>
+						)}
+						{user?.role === 'SUPER_ADMIN' && selectedCompany && (
+							<select value={selectedEmployee} onChange={(e)=>setSelectedEmployee(e.target.value)} className="border border-amber-300 rounded px-2 py-1">
+								<option value="">All employees</option>
+								{employees.map(u => <option key={u.id} value={u.id}>{u.fullName || u.email || u.id}</option>)}
+							</select>
+						)}
 						<input value={projectQuery} onChange={(e)=>setProjectQuery(e.target.value)} placeholder="Search by project" className="border border-amber-300 rounded px-3 py-2" />
 						<button onClick={searchCompanyTasks} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-2">Search</button>
 						<button onClick={()=>{ setTab('company'); setPage(1); }} className={(tab==='company'?'bg-amber-700 text-white':'bg-white text-amber-900') + ' border border-amber-300 rounded px-3 py-2'}>Company</button>

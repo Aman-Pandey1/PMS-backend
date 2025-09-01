@@ -30,11 +30,11 @@ export default function App() {
 				<Route index element={<DashboardPage />} />
 				<Route path="companies" element={<ProtectedRoute roles={['SUPER_ADMIN']}><CompaniesPage /></ProtectedRoute>} />
 				<Route path="employees" element={<ProtectedRoute roles={['COMPANY_ADMIN','SUPER_ADMIN']}><EmployeesPage /></ProtectedRoute>} />
-				        <Route path="attendance" element={<AttendancePage />} />
+				        <Route path="attendance" element={<ProtectedRoute roles={["EMPLOYEE","SUPERVISOR"]}><AttendancePage /></ProtectedRoute>} />
         <Route path="attendance/company" element={<ProtectedRoute roles={["COMPANY_ADMIN","SUPER_ADMIN","SUPERVISOR"]}><AttendanceCompany /></ProtectedRoute>} />
 				<Route path="leaves" element={<LeavesPage />} />
 				<Route path="tasks" element={<TasksPage />} />
-				<Route path="tasks/assign" element={<ProtectedRoute roles={["SUPERVISOR","COMPANY_ADMIN","SUPER_ADMIN"]}><TaskAssign /></ProtectedRoute>} />
+				<Route path="tasks/assign" element={<ProtectedRoute roles={["SUPERVISOR"]}><TaskAssign /></ProtectedRoute>} />
 				<Route path="documents" element={<DocumentsPage />} />
 				{/* <Route path="payroll" element={<ProtectedRoute roles={['COMPANY_ADMIN','SUPER_ADMIN']}><PayrollPage /></ProtectedRoute>} /> */}
 				<Route path="notifications" element={<NotificationsPage />} />
