@@ -9,3 +9,8 @@ export async function meRequest() {
 	const { data } = await api.get('/auth/me');
 	return data;
 }
+
+export async function updateMe(input) {
+	const { data } = await api.patch('/auth/me', input);
+	return data;
+}

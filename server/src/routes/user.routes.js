@@ -8,7 +8,7 @@ const r = Router();
 r.use(requireAuth);
 r.get('/', requireRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'SUPERVISOR'), listUsers);
 r.get('/my-subordinates', requireRoles('SUPERVISOR', 'COMPANY_ADMIN', 'SUPER_ADMIN'), mySubordinates);
-r.post('/', requireRoles('SUPER_ADMIN', 'COMPANY_ADMIN'), createUser);
+r.post('/', requireRoles('COMPANY_ADMIN'), createUser);
 // management
 r.post('/:id/active', requireRoles('SUPER_ADMIN','COMPANY_ADMIN'), setUserActive);
 r.post('/:id/password', requireRoles('SUPER_ADMIN','COMPANY_ADMIN'), adminSetPassword);

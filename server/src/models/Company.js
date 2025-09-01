@@ -16,6 +16,8 @@ const companySchema = new Schema({
 	},
 	description: { type: String },
 	logo: { type: String },
+	geofenceCenter: { type: { type: String, enum: ['Point'], default: 'Point' }, coordinates: { type: [Number], default: undefined } },
+	geofenceRadiusMeters: { type: Number, default: 0 },
 }, { timestamps: true });
 
 export const Company = model('Company', companySchema);

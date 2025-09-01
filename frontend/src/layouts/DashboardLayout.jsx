@@ -22,19 +22,38 @@ export default function DashboardLayout() {
 	}, [user?.companyId, user?.role]);
 
 	useEffect(() => {
+		let timer;
 		(async () => {
 			try {
 				if (!user) return;
-				const { listNotifications } = await import('../services/notifications.js');
-				const items = await listNotifications();
-				const pending = (items || []).filter(n => !n.readAt);
-				if (pending.length) {
+				// Request OS notification permission (non-blocking)
+				try { if ('Notification' in window) await Notification.requestPermission(); } catch {}
+				const fetchAndNotify = async () => {
+					const { listNotifications } = await import('../services/notifications.js');
+					const items = await listNotifications();
+					const pending = (items || []).filter(n => !n.readAt);
 					setUnread(pending);
-					setShowPopup(true);
-				}
+					if (user?.role !== 'SUPER_ADMIN' && pending.length) setShowPopup(true);
+					// Cross-tab dedup using last timestamp
+					try {
+						const lastKey = 'notif:lastTs';
+						const lastTs = Number(localStorage.getItem(lastKey) || '0');
+						const newestTs = items.length ? new Date(items[0].createdAt).getTime() : lastTs;
+						if (document.hidden && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+							const newly = items.filter(n => !n.readAt && new Date(n.createdAt).getTime() > lastTs).slice(0, 3);
+							newly.forEach(n => { try { new Notification(n.title || n.type, { body: n.body || '', tag: n._id || n.id }); } catch {} });
+						}
+						if (newestTs > lastTs) localStorage.setItem(lastKey, String(newestTs));
+						// Title badge
+						document.title = pending.length ? `(${pending.length}) EMS` : 'EMS';
+					} catch {}
+				};
+				await fetchAndNotify();
+				timer = setInterval(fetchAndNotify, 30000);
 			} catch {}
 		})();
-	}, [user?.id]);
+		return () => { if (timer) clearInterval(timer); try { document.title = 'EMS'; } catch {} };
+	}, [user?.id, user?.role]);
 
 	async function dismissAndMarkAllRead() {
 		try {

@@ -34,3 +34,25 @@ export async function me(req, res) {
 	if (!user) return res.status(404).json({ error: 'Not found' });
 	return res.json({ id: user.id, email: user.email, fullName: user.fullName, role: user.role, companyId: user.companyId });
 }
+
+export async function updateMe(req, res) {
+	const userId = req.user?.uid;
+	if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+	const { email, fullName, password } = req.body || {};
+	const patch = {};
+	if (email) patch.email = String(email).trim();
+	if (fullName) patch.fullName = String(fullName).trim();
+	if (password) {
+		if (String(password).length < 4) return res.status(400).json({ error: 'Password min 4 chars' });
+		const passwordHash = await argon2.hash(String(password));
+		patch.passwordHash = passwordHash;
+	}
+	try {
+		const updated = await User.findByIdAndUpdate(userId, patch, { new: true });
+		if (!updated) return res.status(404).json({ error: 'Not found' });
+		return res.json({ id: updated.id, email: updated.email, fullName: updated.fullName, role: updated.role, companyId: updated.companyId });
+	} catch (e) {
+		if (e?.code === 11000) return res.status(409).json({ error: 'Email already in use' });
+		return res.status(400).json({ error: 'Invalid update' });
+	}
+}
