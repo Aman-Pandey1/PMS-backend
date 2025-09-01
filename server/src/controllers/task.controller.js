@@ -88,8 +88,15 @@ function projectNameOr(task) {
 }
 
 export async function filterTasks(req, res) {
-	const { status, assigneeId, creatorId, projectName } = req.query || {};
-	const where = { companyId: req.user.companyId };
+	const { status, assigneeId, creatorId, projectName, companyId: companyIdParam } = req.query || {};
+	const isSuper = req.user.role === 'SUPER_ADMIN';
+	const where = {};
+	if (isSuper) {
+		if (!companyIdParam) return res.status(400).json({ error: 'companyId required' });
+		where.companyId = companyIdParam;
+	} else {
+		where.companyId = req.user.companyId;
+	}
 	if (status) where.status = status;
 	if (assigneeId) where.assigneeId = assigneeId;
 	if (creatorId) where.creatorId = creatorId;
