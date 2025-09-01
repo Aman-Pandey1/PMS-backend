@@ -142,15 +142,15 @@ export default function AttendanceCompany() {
                     <label className="block text-sm text-amber-900">Employee name</label>
                     <input value={employeeQuery} onChange={(e)=>setEmployeeQuery(e.target.value)} className="border border-amber-300 rounded px-3 py-2" placeholder="Search name" />
                 </div>
-				<div>
-					<label className="block text-sm text-amber-900">Start</label>
-					<input type="date" className="border border-amber-300 rounded px-3 py-2" value={start} onChange={(e)=>setStart(e.target.value)} />
-				</div>
-				<div>
-					<label className="block text-sm text-amber-900">End</label>
-					<input type="date" className="border border-amber-300 rounded px-3 py-2" value={end} onChange={(e)=>setEnd(e.target.value)} />
-				</div>
-				<button onClick={load} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">Filter</button>
+                <div>
+                    <label className="block text-sm text-amber-900">Start</label>
+                    <input type="date" className="border border-amber-300 rounded px-3 py-2" value={start} onChange={(e)=>setStart(e.target.value)} />
+                </div>
+                <div>
+                    <label className="block text-sm text-amber-900">End</label>
+                    <input type="date" className="border border-amber-300 rounded px-3 py-2" value={end} onChange={(e)=>setEnd(e.target.value)} />
+                </div>
+                <button onClick={load} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">Filter</button>
                 <button onClick={downloadPdf} className="border border-amber-300 text-amber-900 rounded px-4 py-2">Download PDF</button>
 			</div>
 			<div className="overflow-x-auto bg-white border border-amber-300 rounded">
@@ -164,16 +164,17 @@ export default function AttendanceCompany() {
 							<th className="text-left p-2 border-b border-amber-200">Check-in Location</th>
 							<th className="text-left p-2 border-b border-amber-200">Check-out Location</th>
 							<th className="text-left p-2 border-b border-amber-200">Report</th>
+							<th className="text-left p-2 border-b border-amber-200">Status</th>
 						</tr>
 					</thead>
 					<tbody>
                         {filteredItems.length === 0 && (
                             <tr>
-                                <td colSpan={7} className="p-4 text-center text-sm opacity-70">No attendance records for the selected period.</td>
+                                <td colSpan={8} className="p-4 text-center text-sm opacity-70">No attendance records for the selected period.</td>
                             </tr>
                         )}
                         {paged.map((r) => (
-                            <tr key={r._id}>
+                            <tr key={r._id} className={r.status==='FLAGGED' ? 'bg-red-50' : ''}>
                                 <td className="p-2 border-t border-amber-100">{r.user?.fullName || r.userId}</td>
                                 <td className="p-2 border-t border-amber-100">{r.date}</td>
                                 <td className="p-2 border-t border-amber-100">{r.checkInAt ? new Date(r.checkInAt).toLocaleString() : '-'}</td>
@@ -189,6 +190,9 @@ export default function AttendanceCompany() {
                                     </a>
                                 ) : '-'}</td>
                                 <td className="p-2 border-t border-amber-100">{r.dailyReport?.text || '-'}</td>
+                                <td className="p-2 border-t border-amber-100">
+                                    {r.status === 'FLAGGED' ? <span className="text-xs bg-red-100 text-red-900 rounded px-2 py-1">OUTSIDE</span> : <span className="text-xs bg-green-100 text-green-900 rounded px-2 py-1">OK</span>}
+                                </td>
                             </tr>
                         ))}
 					</tbody>
