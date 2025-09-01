@@ -14,13 +14,24 @@ export default function LeavesPage() {
     const [myPage, setMyPage] = useState(1);
     const [coPage, setCoPage] = useState(1);
     const pageSize = 10;
+    const [companies, setCompanies] = useState([]);
+    const [companyId, setCompanyId] = useState(() => localStorage.getItem('ems:sa:companyId') || '');
+    const [employees, setEmployees] = useState([]);
+    const [employeeId, setEmployeeId] = useState('');
+    const [statusFilter, setStatusFilter] = useState('');
 
 	async function load() {
 		try {
 			const leavesSvc = await import('../services/leaves.js');
 			setMyList(await leavesSvc.myLeaves());
 			if (user?.role === 'SUPER_ADMIN' || user?.role === 'COMPANY_ADMIN' || user?.role === 'SUPERVISOR') {
-				setCompanyList(await leavesSvc.companyLeaves());
+				const params = {};
+            if (user?.role === 'SUPER_ADMIN') {
+                if (!companyId) { setCompanyList([]); } else { params.companyId = companyId; }
+                if (employeeId) params.userId = employeeId;
+            }
+            if (statusFilter) params.status = statusFilter;
+				setCompanyList(await leavesSvc.companyLeaves(params));
 			}
 		} catch (e) { console.error(e); }
 	}
@@ -35,7 +46,25 @@ export default function LeavesPage() {
 			clearInterval(id);
 		};
 	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [user?.role]);
+	}, [user?.role, companyId, employeeId, statusFilter]);
+
+	useEffect(() => {
+        (async () => {
+            try {
+                if (user?.role === 'SUPER_ADMIN') {
+                    const { listCompanies } = await import('../services/companies.js');
+                    setCompanies(await listCompanies());
+                }
+                if (user?.role === 'SUPER_ADMIN' && companyId) {
+                    const { listUsers } = await import('../services/users.js');
+                    setEmployees(await listUsers(companyId));
+                } else if (user?.role === 'COMPANY_ADMIN') {
+                    const { listUsers } = await import('../services/users.js');
+                    setEmployees(await listUsers());
+                }
+            } catch {}
+        })();
+    }, [user?.role, companyId]);
 
 	async function submit(e) {
 		e.preventDefault();
@@ -78,6 +107,7 @@ export default function LeavesPage() {
 			{msg && <div className="text-green-800 bg-green-50 border border-green-200 rounded p-2">{msg}</div>}
 			{errMsg && <div className="text-red-800 bg-red-50 border border-red-200 rounded p-2">{errMsg}</div>}
 			<div className="grid md:grid-cols-2 gap-6">
+				{!(user?.role === 'SUPER_ADMIN' || user?.role === 'COMPANY_ADMIN') && (
 				<div className="bg-white border border-amber-300 rounded p-4">
 					<div className="text-amber-900 font-medium mb-3">Apply Leave</div>
 					<form onSubmit={submit} className="grid gap-2">
@@ -93,6 +123,7 @@ export default function LeavesPage() {
 						<button className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-2 mt-2">Submit</button>
 					</form>
 				</div>
+				)}
 
 				<div className="bg-white border border-amber-300 rounded p-4 overflow-x-auto">
 					<div className="text-amber-900 font-medium mb-3">My Leaves</div>
@@ -127,6 +158,29 @@ export default function LeavesPage() {
 			{(user?.role === 'SUPER_ADMIN' || user?.role === 'COMPANY_ADMIN' || user?.role === 'SUPERVISOR') && (
 				<div className="bg-white border border-amber-300 rounded p-4 overflow-x-auto">
 					<div className="text-amber-900 font-medium mb-3">Company Leaves</div>
+                    <div className="flex items-center gap-2 mb-3">
+                        {user?.role === 'SUPER_ADMIN' && (
+                            <>
+                                <select value={companyId} onChange={(e)=>{ setCompanyId(e.target.value); localStorage.setItem('ems:sa:companyId', e.target.value); setEmployeeId(''); }} className="border border-amber-300 rounded px-3 py-2">
+                                    <option value="">Select company</option>
+                                    {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                </select>
+                                {companyId && (
+                                    <select value={employeeId} onChange={(e)=>setEmployeeId(e.target.value)} className="border border-amber-300 rounded px-3 py-2">
+                                        <option value="">All employees</option>
+                                        {employees.map(u => <option key={u.id} value={u.id}>{u.fullName || u.email || u.id}</option>)}
+                                    </select>
+                                )}
+                            </>
+                        )}
+                        <select value={statusFilter} onChange={(e)=>setStatusFilter(e.target.value)} className="border border-amber-300 rounded px-3 py-2">
+                            <option value="">All statuses</option>
+                            <option value="PENDING">PENDING</option>
+                            <option value="APPROVED">APPROVED</option>
+                            <option value="REJECTED">REJECTED</option>
+                        </select>
+                        <button onClick={load} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-2">Filter</button>
+                    </div>
 					<table className="min-w-[800px] w-full">
 						<thead>
 							<tr className="bg-amber-50 text-amber-900">

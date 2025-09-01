@@ -3,6 +3,9 @@ import { Attendance } from '../models/Attendance.js';
 import { User } from '../models/User.js';
 
 export async function checkIn(req, res) {
+	if (req.user.role === 'SUPER_ADMIN' || req.user.role === 'COMPANY_ADMIN') {
+		return res.status(403).json({ error: 'Attendance not allowed for admin roles' });
+	}
 	const userId = req.user.uid;
 	const companyId = req.user.companyId;
 	if (!companyId) return res.status(400).json({ error: 'User is not associated with a company' });
@@ -36,6 +39,9 @@ export async function checkIn(req, res) {
 }
 
 export async function checkOut(req, res) {
+	if (req.user.role === 'SUPER_ADMIN' || req.user.role === 'COMPANY_ADMIN') {
+		return res.status(403).json({ error: 'Attendance not allowed for admin roles' });
+	}
 	const userId = req.user.uid;
 	const companyId = req.user.companyId;
 	if (!companyId) return res.status(400).json({ error: 'User is not associated with a company' });

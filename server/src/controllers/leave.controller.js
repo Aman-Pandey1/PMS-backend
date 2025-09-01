@@ -3,6 +3,9 @@ import { User } from '../models/User.js';
 import { Notification } from '../models/Notification.js';
 
 export async function requestLeave(req, res) {
+	if (req.user.role === 'SUPER_ADMIN' || req.user.role === 'COMPANY_ADMIN') {
+		return res.status(403).json({ error: 'Leave application not allowed for admin roles' });
+	}
 	const userId = req.user.uid;
 	const companyId = req.user.companyId;
 	if (!companyId) return res.status(400).json({ error: 'User is not associated with a company' });
@@ -76,8 +79,9 @@ export async function companyLeaves(req, res) {
 	const companyIdParam = req.query.companyId;
 	const companyId = isSuper && companyIdParam ? companyIdParam : req.user.companyId;
 	if (isSuper && !companyId) return res.status(400).json({ error: 'companyId required' });
-	const { status } = req.query || {};
+	const { status, userId } = req.query || {};
 	const where = { companyId };
+	if (userId) where.userId = userId;
 	if (status) where.status = status;
 	const rows = await LeaveRequest.find(where).sort({ createdAt: -1 }).lean();
 	const userIds = [...new Set(rows.map(r => String(r.userId)))];

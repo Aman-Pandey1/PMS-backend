@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requestLeave, approveLeave, rejectLeave, myLeaves } from '../controllers/leave.controller.js';
+import { requestLeave, approveLeave, rejectLeave, myLeaves, companyLeaves } from '../controllers/leave.controller.js';
 import { requireAuth, requireRoles } from '../middleware/auth.js';
 
 const r = Router();
