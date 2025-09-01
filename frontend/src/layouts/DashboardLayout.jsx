@@ -30,11 +30,11 @@ export default function DashboardLayout() {
 				const pending = (items || []).filter(n => !n.readAt);
 				if (pending.length) {
 					setUnread(pending);
-					setShowPopup(true);
+					if (user?.role !== 'SUPER_ADMIN') setShowPopup(true);
 				}
 			} catch {}
 		})();
-	}, [user?.id]);
+	}, [user?.id, user?.role]);
 
 	async function dismissAndMarkAllRead() {
 		try {
