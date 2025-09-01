@@ -10,7 +10,7 @@ r.get('/me', myCompany);
 r.get('/', requireRoles('SUPER_ADMIN'), listCompanies);
 r.post('/', requireRoles('SUPER_ADMIN'), createCompany);
 r.get('/:id', requireRoles('SUPER_ADMIN'), getCompany);
-r.patch('/:id', requireRoles('SUPER_ADMIN'), updateCompany);
+r.patch('/:id', requireRoles('SUPER_ADMIN','COMPANY_ADMIN'), updateCompany);
 r.delete('/:id', requireRoles('SUPER_ADMIN'), deleteCompany);
 // upload logo and toggle status
 r.post('/:id/upload-logo', requireRoles('SUPER_ADMIN'), uploadLogo);
