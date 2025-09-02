@@ -47,8 +47,8 @@ export async function computeMonthlySalary(req, res) {
 		if (holidayDatesSet.has(dateStr)) continue;
 		workingDays++;
 	}
-	// Approved leaves within month
-	const leaves = await LeaveRequest.find({ userId, companyId: req.user.companyId, status: 'APPROVED', $or: [
+	// Approved leaves within month (use employee's company calendar)
+	const leaves = await LeaveRequest.find({ userId, companyId: targetCompanyId, status: 'APPROVED', $or: [
 		{ startDate: { $lte: iso(end) }, endDate: { $gte: iso(start) } },
 	] }).lean();
 	function datesBetween(a, b) {
