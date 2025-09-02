@@ -12,6 +12,10 @@ export default function SettingsPage() {
 	const [radius, setRadius] = useState('');
 	const [msg, setMsg] = useState('');
 	const [errMsg, setErrMsg] = useState('');
+	const [weeklyOffDays, setWeeklyOffDays] = useState([0]);
+	const [holidayInputDate, setHolidayInputDate] = useState('');
+	const [holidayInputLabel, setHolidayInputLabel] = useState('');
+	const [holidays, setHolidays] = useState([]);
 
 	useEffect(() => {
 		(async () => {
@@ -30,6 +34,8 @@ export default function SettingsPage() {
 					setCenterLat(String(c.allowedGeoCenter.coordinates[1] ?? ''));
 				}
 				if (c?.allowedGeoRadiusMeters) setRadius(String(c.allowedGeoRadiusMeters));
+				if (c?.weeklyOffDays) setWeeklyOffDays(c.weeklyOffDays);
+				if (c?.holidayDates) setHolidays(c.holidayDates);
 			} catch {}
 		})();
 	}, []);
@@ -95,6 +101,59 @@ export default function SettingsPage() {
 					</div>
 					<div className="md:col-span-3 flex justify-end">
 						<button onClick={saveGeo} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">Save</button>
+					</div>
+					<div className="md:col-span-3 border-t my-2"></div>
+					<div className="md:col-span-3 text-amber-900 font-medium">Leave Calendar</div>
+					<div className="md:col-span-3">
+						<label className="block text-sm mb-1 text-amber-900">Weekly Off Days</label>
+						<div className="flex flex-wrap gap-2">
+							{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d,idx)=>(
+								<label key={idx} className="inline-flex items-center gap-1 border border-amber-300 rounded px-2 py-1">
+									<input type="checkbox" checked={weeklyOffDays.includes(idx)} onChange={(e)=>{
+										setWeeklyOffDays(prev=> e.target.checked ? Array.from(new Set([...prev, idx])) : prev.filter(x=>x!==idx));
+									}} />
+									<span>{d}</span>
+								</label>
+							))}
+						</div>
+					</div>
+					<div className="md:col-span-3 grid md:grid-cols-3 gap-3 items-end">
+						<div>
+							<label className="block text-sm mb-1 text-amber-900">Holiday Date</label>
+							<input type="date" className="w-full border border-amber-300 rounded px-3 py-2" value={holidayInputDate} onChange={(e)=>setHolidayInputDate(e.target.value)} />
+						</div>
+						<div>
+							<label className="block text-sm mb-1 text-amber-900">Label</label>
+							<input className="w-full border border-amber-300 rounded px-3 py-2" value={holidayInputLabel} onChange={(e)=>setHolidayInputLabel(e.target.value)} placeholder="Holiday name" />
+						</div>
+						<div>
+							<button onClick={()=>{ if (!holidayInputDate) return; setHolidays(prev=> Array.from(new Map([...prev, {date: holidayInputDate, label: holidayInputLabel||''}].map(h=>[h.date, h]))).map(([,v])=>v)); setHolidayInputDate(''); setHolidayInputLabel(''); }} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">Add Holiday</button>
+						</div>
+					</div>
+					<div className="md:col-span-3 overflow-x-auto">
+						<table className="min-w-[600px] w-full">
+							<thead>
+								<tr className="bg-amber-50 text-amber-900">
+									<th className="text-left p-2 border-b border-amber-200">Date</th>
+									<th className="text-left p-2 border-b border-amber-200">Label</th>
+									<th className="text-left p-2 border-b border-amber-200">Actions</th>
+								</tr>
+							</thead>
+							<tbody>
+								{holidays.map(h => (
+									<tr key={h.date}>
+										<td className="p-2 border-t border-amber-100">{h.date}</td>
+										<td className="p-2 border-t border-amber-100">{h.label || '-'}</td>
+										<td className="p-2 border-t border-amber-100">
+											<button onClick={()=>setHolidays(prev=>prev.filter(x=>x.date!==h.date))} className="border border-amber-300 rounded px-3 py-1">Remove</button>
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</div>
+					<div className="md:col-span-3 flex justify-end">
+						<button onClick={async()=>{ setMsg(''); setErrMsg(''); try { const { updateMyCompanyLeaveCalendar } = await import('../services/companies.js'); await updateMyCompanyLeaveCalendar({ weeklyOffDays, holidayDates: holidays }); setMsg('Leave calendar saved'); } catch (e) { setErrMsg(e?.response?.data?.error || 'Failed to save leave calendar'); } }} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">Save Leave Calendar</button>
 					</div>
 				</div>
 			) : (

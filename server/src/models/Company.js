@@ -22,6 +22,9 @@ const companySchema = new Schema({
 	logo: { type: String },
 	geofenceCenter: { type: { type: String, enum: ['Point'], default: 'Point' }, coordinates: { type: [Number], default: undefined } },
 	geofenceRadiusMeters: { type: Number, default: 0 },
+	// Company leave calendar
+	weeklyOffDays: { type: [Number], default: [0] }, // 0 = Sunday
+	holidayDates: { type: [ { date: { type: String }, label: { type: String } } ], default: [] },
 }, { timestamps: true });
 
 export const Company = model('Company', companySchema);
