@@ -46,6 +46,14 @@ export default function DashboardLayout() {
 						if (newestTs > lastTs) localStorage.setItem(lastKey, String(newestTs));
 						// Title badge
 						document.title = pending.length ? `(${pending.length}) EMS` : 'EMS';
+						// Favicon badge + App icon badge
+						try {
+							// App icon badge (installed/ supported browsers)
+							if (navigator.setAppBadge) {
+								if (pending.length) await navigator.setAppBadge(pending.length);
+								else await navigator.clearAppBadge();
+							}
+						} catch {}
 					} catch {}
 				};
 				await fetchAndNotify();
@@ -54,6 +62,40 @@ export default function DashboardLayout() {
 		})();
 		return () => { if (timer) clearInterval(timer); try { document.title = 'EMS'; } catch {} };
 	}, [user?.id, user?.role]);
+
+	// Dynamic favicon badge using canvas
+	useEffect(() => {
+		function updateFavicon(count) {
+			try {
+				const link = document.querySelector("link[rel='icon']") || document.createElement('link');
+				link.rel = 'icon';
+				const size = 64;
+				const canvas = document.createElement('canvas');
+				canvas.width = size; canvas.height = size;
+				const ctx = canvas.getContext('2d');
+				// Base circle
+				ctx.fillStyle = '#8b5cf6';
+				ctx.beginPath(); ctx.arc(size/2, size/2, size/2, 0, Math.PI*2); ctx.fill();
+				// Letter E
+				ctx.fillStyle = '#ffffff';
+				ctx.font = 'bold 34px sans-serif';
+				ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+				ctx.fillText('E', size/2 - (count ? 8 : 0), size/2);
+				if (count) {
+					const badge = Math.min(99, count);
+					ctx.fillStyle = '#ef4444';
+					ctx.beginPath(); ctx.arc(size-14, 14, 12, 0, Math.PI*2); ctx.fill();
+					ctx.fillStyle = '#ffffff';
+					ctx.font = 'bold 14px sans-serif';
+					ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+					ctx.fillText(String(badge), size-14, 14);
+				}
+				link.href = canvas.toDataURL('image/png');
+				document.head.appendChild(link);
+			} catch {}
+		}
+		updateFavicon(unread.length || 0);
+	}, [unread.length]);
 
 	async function dismissAndMarkAllRead() {
 		try {
@@ -118,7 +160,15 @@ export default function DashboardLayout() {
 							{unread.map((n) => (
 								<div key={n._id || n.id} className="py-2">
 									<div className="text-sm font-medium text-amber-900">{n.title || n.type}</div>
-									<div className="text-sm opacity-80">{n.body}</div>
+									<div className="text-sm opacity-80">
+										{user?.role === 'SUPER_ADMIN' && (n.company?.name || n.company?.code || n.user?.companyId) ? (
+											<span className="mr-1">{n.company?.name || n.company?.code}</span>
+										) : null}
+										{user?.role === 'SUPER_ADMIN' && (n.user?.fullName || n.user?.email) ? (
+											<span> - {n.user?.fullName || n.user?.email}</span>
+										) : null}
+										{(user?.role !== 'SUPER_ADMIN') ? n.body : (n.body ? ` · ${n.body}` : '')}
+									</div>
 									<div className="text-xs opacity-60 mt-1">{new Date(n.createdAt).toLocaleString()}</div>
 								</div>
 							))}

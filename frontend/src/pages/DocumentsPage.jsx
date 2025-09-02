@@ -16,8 +16,8 @@ export default function DocumentsPage() {
 	async function upload() {
 		const f = fileRef.current?.files?.[0];
 		if (!f) return;
-		await (await import('../services/documents.js')).uploadUserDocument('me', { type, name: f.name });
-		setDocs((d) => [...d, { type, name: f.name }]);
+		await (await import('../services/documents.js')).uploadUserDocument('me', { type, file: f });
+		setDocs((d) => [...d, { type, storage: { key: f.name } }]);
 		if (fileRef.current) fileRef.current.value = '';
 	}
 

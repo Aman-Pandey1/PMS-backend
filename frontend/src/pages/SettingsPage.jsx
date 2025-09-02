@@ -4,6 +4,9 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 export default function SettingsPage() {
 	const { user } = useAuth();
 	const [company, setCompany] = useState(null);
+	const [profileEmail, setProfileEmail] = useState('');
+	const [profileName, setProfileName] = useState('');
+	const [profilePassword, setProfilePassword] = useState('');
 	const [centerLat, setCenterLat] = useState('');
 	const [centerLon, setCenterLon] = useState('');
 	const [radius, setRadius] = useState('');
@@ -13,9 +16,15 @@ export default function SettingsPage() {
 	useEffect(() => {
 		(async () => {
 			try {
-				const { getMyCompany } = await import('../services/companies.js');
-				const c = await getMyCompany();
+				const [{ getMyCompany }, { meRequest }] = await Promise.all([
+					import('../services/companies.js'),
+					import('../services/auth.js'),
+				]);
+				const c = await getMyCompany().catch(()=>null);
 				setCompany(c);
+				const me = await meRequest();
+				setProfileEmail(me.email || '');
+				setProfileName(me.fullName || '');
 				if (c?.allowedGeoCenter?.coordinates) {
 					setCenterLon(String(c.allowedGeoCenter.coordinates[0] ?? ''));
 					setCenterLat(String(c.allowedGeoCenter.coordinates[1] ?? ''));
@@ -43,6 +52,32 @@ export default function SettingsPage() {
 			<h1 className="text-xl font-semibold">Settings</h1>
 			{msg && <div className="text-green-800 bg-green-50 border border-green-200 rounded p-2">{msg}</div>}
 			{errMsg && <div className="text-red-800 bg-red-50 border border-red-200 rounded p-2">{errMsg}</div>}
+			<div className="bg-white border border-amber-300 rounded p-4 grid md:grid-cols-3 gap-3">
+				<div className="md:col-span-3 text-amber-900 font-medium">My Profile</div>
+				<div>
+					<label className="block text-sm mb-1 text-amber-900">Full Name</label>
+					<input className="w-full border border-amber-300 rounded px-3 py-2" value={profileName} onChange={(e)=>setProfileName(e.target.value)} placeholder="Your name" />
+				</div>
+				<div>
+					<label className="block text-sm mb-1 text-amber-900">Email</label>
+					<input className="w-full border border-amber-300 rounded px-3 py-2" value={profileEmail} onChange={(e)=>setProfileEmail(e.target.value)} placeholder="you@example.com" />
+				</div>
+				<div>
+					<label className="block text-sm mb-1 text-amber-900">New Password</label>
+					<input type="password" className="w-full border border-amber-300 rounded px-3 py-2" value={profilePassword} onChange={(e)=>setProfilePassword(e.target.value)} placeholder="Leave blank to keep same" />
+				</div>
+				<div className="md:col-span-3 flex justify-end">
+					<button onClick={async()=>{
+						setMsg(''); setErrMsg('');
+						try {
+							const { updateMe } = await import('../services/auth.js');
+							await updateMe({ email: profileEmail, fullName: profileName, ...(profilePassword ? { password: profilePassword } : {}) });
+							setProfilePassword('');
+							setMsg('Profile updated');
+						} catch (e) { setErrMsg(e?.response?.data?.error || 'Failed to update profile'); }
+					}} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">Save Profile</button>
+				</div>
+			</div>
 			{user?.role === 'COMPANY_ADMIN' ? (
 				<div className="bg-white border border-amber-300 rounded p-4 grid md:grid-cols-3 gap-3">
 					<div className="md:col-span-3 text-amber-900 font-medium">Company Location Settings</div>
