@@ -9,6 +9,7 @@ const salarySchema = new Schema({
 	baseSalary: { type: Number, required: true },
 	securityAmount: { type: Number },
 	paidLeavePerMonth: { type: Number, default: 0 },
+	paidLeaveTypes: { type: [ { type: { type: String }, days: { type: Number } } ], default: [] },
 	effectiveFrom: { type: Date, required: true },
 	effectiveTo: { type: Date },
 }, { timestamps: true });

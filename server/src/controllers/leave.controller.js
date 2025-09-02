@@ -6,11 +6,11 @@ export async function requestLeave(req, res) {
 	const userId = req.user.uid;
 	const companyId = req.user.companyId;
 	if (!companyId) return res.status(400).json({ error: 'User is not associated with a company' });
-	const { startDate, endDate, reason } = req.body || {};
+	const { startDate, endDate, reason, leaveType } = req.body || {};
 	if (!startDate || !endDate || !reason) return res.status(400).json({ error: 'missing fields' });
 	const user = await User.findById(userId);
 	const approverChain = (user?.ancestors || []).reverse();
-	const item = await LeaveRequest.create({ userId, companyId, startDate, endDate, reason, status: 'PENDING', approverChain, currentLevel: 0 });
+	const item = await LeaveRequest.create({ userId, companyId, startDate, endDate, reason, leaveType: leaveType || 'other', status: 'PENDING', approverChain, currentLevel: 0 });
 	// notify manager and company admins
 	try {
 		const notifyUsers = new Set();
