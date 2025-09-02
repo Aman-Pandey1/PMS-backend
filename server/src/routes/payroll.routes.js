@@ -1,4 +1,5 @@
-import { Router } from 'express';
+import express from 'express';
+const Router = express.Router;
 import { companyPayrollSummary, getUserSalary, setUserSalary } from '../controllers/payroll.controller.js';
 import { requireAuth, requireRoles } from '../middleware/auth.js';
 

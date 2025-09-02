@@ -1,4 +1,5 @@
-import { Router } from 'express';
+import express from 'express';
+const Router = express.Router;
 import { listCompanies, createCompany, getCompany, updateCompany, deleteCompany } from '../controllers/company.controller.js';
 import { uploadLogo, myCompany } from '../controllers/company.uploads.controller.js';
 import { Company } from '../models/Company.js';

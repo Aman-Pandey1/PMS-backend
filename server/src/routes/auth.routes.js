@@ -1,4 +1,5 @@
-import { Router } from 'express';
+import express from 'express';
+const Router = express.Router;
 import { login, me, updateMe } from '../controllers/auth.controller.js';
 import { requireAuth } from '../middleware/auth.js';
 

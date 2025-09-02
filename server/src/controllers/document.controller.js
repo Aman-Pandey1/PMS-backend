@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+// Removed invalid type import from express; types not used in JS
 import fs from 'fs';
 import path from 'path';
 import { UserDocument } from '../models/Document.js';

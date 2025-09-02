@@ -1,4 +1,5 @@
-import { Router } from 'express';
+import express from 'express';
+const Router = express.Router;
 import { listNotifications, markRead } from '../controllers/notification.controller.js';
 import { requireAuth } from '../middleware/auth.js';
 

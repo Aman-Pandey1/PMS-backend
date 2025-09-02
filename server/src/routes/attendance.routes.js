@@ -1,4 +1,5 @@
-import { Router } from 'express';
+import express from 'express';
+const Router = express.Router;
 import { checkIn, checkOut, myAttendance, companyAttendance } from '../controllers/attendance.controller.js';
 import { requireAuth, requireRoles } from '../middleware/auth.js';
 
