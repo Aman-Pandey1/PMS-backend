@@ -16,6 +16,7 @@ export default function NotificationsPage() {
 	async function markRead(id) {
 		await (await import('../services/notifications.js')).markNotificationRead(id);
 		setItems((xs) => xs.map((x) => x._id === id ? { ...x, readAt: new Date().toISOString() } : x));
+		try { window.dispatchEvent(new CustomEvent('notification:read', { detail: { id } })); } catch {}
 	}
 
 	return (

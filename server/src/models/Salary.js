@@ -8,6 +8,7 @@ const salarySchema = new Schema({
 	designation: { type: String, required: true },
 	baseSalary: { type: Number, required: true },
 	securityAmount: { type: Number },
+	paidLeavePerMonth: { type: Number, default: 0 },
 	effectiveFrom: { type: Date, required: true },
 	effectiveTo: { type: Date },
 }, { timestamps: true });

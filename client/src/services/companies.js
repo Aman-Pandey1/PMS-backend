@@ -41,3 +41,8 @@ export async function updateMyCompanyGeo(payload) {
 	const { data } = await api.patch('/companies/me/geo', payload);
 	return data;
 }
+
+export async function updateMyCompanyLeaveCalendar(payload) {
+	const { data } = await api.patch('/companies/me/leave-calendar', payload);
+	return data;
+}
