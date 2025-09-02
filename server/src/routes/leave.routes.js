@@ -1,4 +1,5 @@
-import { Router } from 'express';
+import express from 'express';
+const Router = express.Router;
 import { requestLeave, approveLeave, rejectLeave, myLeaves, companyLeaves } from '../controllers/leave.controller.js';
 import { requireAuth, requireRoles } from '../middleware/auth.js';
 
