@@ -1,9 +1,9 @@
-import { Router } from 'express';
+import express from 'express';
 import { listUsers, createUser, mySubordinates } from '../controllers/user.controller.js';
 import { requireAuth, requireRoles } from '../middleware/auth.js';
 import { setUserActive, adminSetPassword, requestPasswordReset, performPasswordReset } from '../controllers/user.manage.controller.js';
 
-const r = Router();
+const r = express.Router();
 
 r.use(requireAuth);
 r.get('/', requireRoles('SUPER_ADMIN', 'COMPANY_ADMIN', 'SUPERVISOR'), listUsers);
