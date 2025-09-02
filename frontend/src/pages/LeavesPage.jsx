@@ -14,6 +14,11 @@ export default function LeavesPage() {
     const [myPage, setMyPage] = useState(1);
     const [coPage, setCoPage] = useState(1);
     const pageSize = 10;
+	// Super admin/company admin filters
+	const [companies, setCompanies] = useState([]);
+	const [selectedCompany, setSelectedCompany] = useState('');
+	const [employees, setEmployees] = useState([]);
+	const [selectedEmployee, setSelectedEmployee] = useState('');
 
 	async function load() {
 		try {
@@ -101,12 +106,6 @@ export default function LeavesPage() {
     const myPaged = myList.slice((myPage-1)*pageSize, (myPage-1)*pageSize + pageSize);
     const coTotal = Math.max(1, Math.ceil(companyList.length / pageSize));
     const coPaged = companyList.slice((coPage-1)*pageSize, (coPage-1)*pageSize + pageSize);
-
-	// Super admin/company admin filters
-	const [companies, setCompanies] = useState([]);
-	const [selectedCompany, setSelectedCompany] = useState('');
-	const [employees, setEmployees] = useState([]);
-	const [selectedEmployee, setSelectedEmployee] = useState('');
 
 	useEffect(() => {
 		(async () => {
