@@ -18,6 +18,8 @@ export default function PayrollPage() {
 	const [monthly, setMonthly] = useState(null);
 	const [msg, setMsg] = useState('');
 	const [errMsg, setErrMsg] = useState('');
+	const [overviewRows, setOverviewRows] = useState([]);
+	const [overviewLoading, setOverviewLoading] = useState(false);
 
 	useEffect(() => {
 		(async () => {
@@ -107,6 +109,7 @@ export default function PayrollPage() {
 			<div className="flex gap-2">
 				<button onClick={()=>setTab('setup')} className={(tab==='setup'?'bg-amber-700 text-white':'border text-amber-900')+" rounded px-3 py-1 border-amber-300"}>Setup</button>
 				<button onClick={()=>setTab('monthly')} className={(tab==='monthly'?'bg-amber-700 text-white':'border text-amber-900')+" rounded px-3 py-1 border-amber-300"}>Monthly Salary</button>
+				<button onClick={()=>setTab('overview')} className={(tab==='overview'?'bg-amber-700 text-white':'border text-amber-900')+" rounded px-3 py-1 border-amber-300"}>Overview</button>
 			</div>
 
 			{tab==='setup' && (
@@ -203,6 +206,85 @@ export default function PayrollPage() {
 							</div>
 						</div>
 					)}
+				</div>
+			)}
+
+			{tab==='overview' && (
+				<div className="bg-white border border-amber-300 rounded p-4 grid gap-3">
+					<div className="text-amber-900 font-medium">Overview (Monthly)</div>
+					<div className="flex flex-wrap gap-2 items-center">
+						{user?.role === 'SUPER_ADMIN' && (
+							<select value={selectedCompany} onChange={(e)=>{ setSelectedCompany(e.target.value); setOverviewRows([]); }} className="border border-amber-300 rounded px-2 py-1">
+								<option value="">Select company</option>
+								{companies.map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
+							</select>
+						)}
+						<input type="number" className="border border-amber-300 rounded px-2 py-1 w-28" value={year} onChange={(e)=>setYear(Number(e.target.value))} />
+						<select className="border border-amber-300 rounded px-2 py-1" value={month} onChange={(e)=>setMonth(Number(e.target.value))}>
+							{Array.from({length:12}).map((_,i)=>(<option key={i+1} value={i+1}>{i+1}</option>))}
+						</select>
+						<button onClick={async()=>{
+							setErrMsg(''); setMsg(''); setOverviewLoading(true); setOverviewRows([]);
+							try {
+								let list = employees;
+								if (user?.role === 'SUPER_ADMIN') {
+									if (!selectedCompany) { setErrMsg('Select company'); setOverviewLoading(false); return; }
+									const { listUsers } = await import('../services/users.js');
+									list = await listUsers(selectedCompany);
+								}
+								const { computeMonthly } = await import('../services/payroll.js');
+								const rows = [];
+								for (const u of list) {
+									try {
+										const r = await computeMonthly(u.id, year, month);
+										const remaining = Math.max(0, Number(r.paidLeaveAllowed||0) - Math.min(Number(r.leaveDays||0), Number(r.paidLeaveAllowed||0)));
+										rows.push({ id: u.id, name: u.fullName || u.email || u.id, baseSalary: r.baseSalary, paidLeaveAllowed: r.paidLeaveAllowed, leaveDays: r.leaveDays, unpaidLeaveDays: r.unpaidLeaveDays, deduction: r.deduction, payable: r.payable, remainingPaidLeave: remaining });
+									} catch (e) {
+										rows.push({ id: u.id, name: u.fullName || u.email || u.id, error: (e?.response?.data?.error || 'No salary set') });
+									}
+								}
+								setOverviewRows(rows);
+							} finally {
+								setOverviewLoading(false);
+							}
+						}} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-1">Compute Overview</button>
+					</div>
+					<div className="overflow-x-auto">
+						<table className="min-w-[900px] w-full">
+							<thead>
+								<tr className="bg-amber-50 text-amber-900">
+									<th className="text-left p-2 border-b border-amber-200">Employee</th>
+									<th className="text-left p-2 border-b border-amber-200">Base Salary</th>
+									<th className="text-left p-2 border-b border-amber-200">Allowed Paid</th>
+									<th className="text-left p-2 border-b border-amber-200">Used</th>
+									<th className="text-left p-2 border-b border-amber-200">Remaining</th>
+									<th className="text-left p-2 border-b border-amber-200">Unpaid Days</th>
+									<th className="text-left p-2 border-b border-amber-200">Deduction</th>
+									<th className="text-left p-2 border-b border-amber-200">Payable</th>
+									<th className="text-left p-2 border-b border-amber-200">Status</th>
+								</tr>
+							</thead>
+							<tbody>
+								{overviewLoading ? (
+									<tr><td className="p-2" colSpan={9}>Calculating...</td></tr>
+								) : (
+									overviewRows.map(r => (
+										<tr key={r.id}>
+											<td className="p-2 border-t border-amber-100">{r.name}</td>
+											<td className="p-2 border-t border-amber-100">{r.baseSalary ?? '-'}</td>
+											<td className="p-2 border-t border-amber-100">{r.paidLeaveAllowed ?? '-'}</td>
+											<td className="p-2 border-t border-amber-100">{r.leaveDays ?? '-'}</td>
+											<td className="p-2 border-t border-amber-100">{r.remainingPaidLeave ?? '-'}</td>
+											<td className="p-2 border-t border-amber-100">{r.unpaidLeaveDays ?? '-'}</td>
+											<td className="p-2 border-t border-amber-100">{typeof r.deduction === 'number' ? r.deduction.toFixed(2) : '-'}</td>
+											<td className="p-2 border-t border-amber-100">{typeof r.payable === 'number' ? r.payable.toFixed(2) : '-'}</td>
+											<td className="p-2 border-t border-amber-100">{r.error ? r.error : 'OK'}</td>
+										</tr>
+									))
+								)}
+							</tbody>
+						</table>
+					</div>
 				</div>
 			)}
 		</div>
