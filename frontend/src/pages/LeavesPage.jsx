@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 export default function LeavesPage() {
 	const { user } = useAuth();
 	const [company, setCompany] = useState(null);
+	const [leaveBalance, setLeaveBalance] = useState(null);
 	const [start, setStart] = useState('');
 	const [end, setEnd] = useState('');
 	const [reason, setReason] = useState('');
@@ -65,6 +66,9 @@ export default function LeavesPage() {
 				if (user?.role === 'EMPLOYEE' || user?.role === 'SUPERVISOR') {
 					const { getMyCompany } = await import('../services/companies.js');
 					setCompany(await getMyCompany());
+					const { myLeaveBalance } = await import('../services/payroll.js');
+					const now = new Date();
+					setLeaveBalance(await myLeaveBalance(now.getFullYear(), now.getMonth()+1));
 				}
 			} catch {}
 		})();
@@ -153,6 +157,9 @@ export default function LeavesPage() {
 							<div>Weekly Offs: {(company.weeklyOffDays||[0]).map(d=>['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]).join(', ')}</div>
 							{(company.holidayDates||[]).length>0 && (
 								<div>Holidays: {(company.holidayDates||[]).map(h=>`${h.date}${h.label?` (${h.label})`:''}`).join(', ')}</div>
+							)}
+							{leaveBalance && (
+								<div className="mt-1">Paid Leave: {leaveBalance.remainingPaidLeave} remaining this month (allowed {leaveBalance.paidLeaveAllowed}, used {leaveBalance.usedPaidLeave})</div>
 							)}
 						</div>
 					)}

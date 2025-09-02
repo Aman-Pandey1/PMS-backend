@@ -19,3 +19,8 @@ export async function computeMonthly(userId, year, month) {
 	const { data } = await api.get(`/payroll/user/${userId}/monthly?year=${year}&month=${month}`);
 	return data;
 }
+
+export async function myLeaveBalance(year, month) {
+    const { data } = await api.get(`/payroll/me/leave-balance?year=${year}&month=${month}`);
+    return data;
+}

@@ -83,3 +83,47 @@ export async function companyPayrollSummary(req, res) {
 	const total = payments.reduce((s, p) => s + p.amount, 0);
 	res.json({ total, count: payments.length });
 }
+
+export async function myLeaveBalance(req, res) {
+	const uid = req.user.uid;
+	const now = new Date();
+	const { year = now.getFullYear(), month = now.getMonth() + 1 } = req.query || {};
+	const ym = { year: Number(year), month: Number(month) };
+	if (!ym.year || !ym.month) return res.status(400).json({ error: 'year and month required' });
+	const start = new Date(ym.year, ym.month - 1, 1);
+	const end = new Date(ym.year, ym.month, 0);
+	const { LeaveRequest } = await import('../models/LeaveRequest.js');
+	const { Company } = await import('../models/Company.js');
+	const { User } = await import('../models/User.js');
+	const u = await User.findById(uid).lean();
+	if (!u) return res.status(404).json({ error: 'User not found' });
+	const targetCompanyId = u.companyId;
+	const salary = await Salary.findOne({ userId: uid, companyId: targetCompanyId, effectiveFrom: { $lte: end } }).sort({ effectiveFrom: -1 }).lean();
+	const allowedPaid = Number(salary?.paidLeavePerMonth || 0);
+	const company = await Company.findById(targetCompanyId).lean();
+	const weeklyOffDays = company?.weeklyOffDays?.length ? company.weeklyOffDays : [0];
+	const holidayDatesSet = new Set((company?.holidayDates || []).map(h => h.date));
+	const iso = (d)=> new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+	function datesBetween(a, b) {
+		const arr = [];
+		const s = new Date(a);
+		const e = new Date(b);
+		for (let d = new Date(s); d <= e; d.setDate(d.getDate()+1)) arr.push(iso(d));
+		return arr;
+	}
+	const leaves = await LeaveRequest.find({ userId: uid, companyId: targetCompanyId, status: 'APPROVED', $or: [
+		{ startDate: { $lte: iso(end) }, endDate: { $gte: iso(start) } },
+	] }).lean();
+	const leaveDates = new Set();
+	for (const l of leaves) {
+		for (const d of datesBetween(l.startDate, l.endDate)) {
+			const dd = new Date(d);
+			if (dd < start || dd > end) continue;
+			if (weeklyOffDays.includes(dd.getDay())) continue;
+			if (holidayDatesSet.has(d)) continue;
+			leaveDates.add(d);
+		}
+	}
+	const remainingPaidLeave = Math.max(0, allowedPaid - leaveDates.size);
+	res.json({ period: ym, paidLeaveAllowed: allowedPaid, usedPaidLeave: leaveDates.size, remainingPaidLeave });
+}
