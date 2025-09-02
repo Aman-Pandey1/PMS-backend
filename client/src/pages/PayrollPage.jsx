@@ -11,6 +11,7 @@ export default function PayrollPage() {
 	const [designation, setDesignation] = useState('');
 	const [baseSalary, setBaseSalary] = useState('');
 	const [paidLeave, setPaidLeave] = useState('0');
+	const [paidLeaveTypes, setPaidLeaveTypes] = useState([{ type: 'emergency', days: 0 }, { type: 'sick', days: 0 }, { type: 'vacation', days: 0 }]);
 	const [effectiveFrom, setEffectiveFrom] = useState('');
 	const [salaryHistory, setSalaryHistory] = useState([]);
 	const [year, setYear] = useState(new Date().getFullYear());
@@ -68,10 +69,11 @@ export default function PayrollPage() {
 				designation,
 				baseSalary: Number(baseSalary),
 				paidLeavePerMonth: Number(paidLeave),
+				paidLeaveTypes: paidLeaveTypes.map(p=>({ type: p.type, days: Number(p.days)||0 })),
 				effectiveFrom: effectiveFrom || new Date().toISOString(),
 			});
 			setMsg('Salary saved');
-			setDesignation(''); setBaseSalary(''); setPaidLeave('0'); setEffectiveFrom('');
+			setDesignation(''); setBaseSalary(''); setPaidLeave('0'); setPaidLeaveTypes([{ type: 'emergency', days: 0 }, { type: 'sick', days: 0 }, { type: 'vacation', days: 0 }]); setEffectiveFrom('');
 			loadSalaryHistory(selectedEmployee);
 		} catch (e) { setErrMsg(e?.response?.data?.error || 'Failed to save salary'); }
 	}
@@ -128,6 +130,16 @@ export default function PayrollPage() {
 						<div>
 							<label className="block text-sm mb-1 text-amber-900">Paid Leave / Month</label>
 							<input type="number" className="w-full border border-amber-300 rounded px-3 py-2" value={paidLeave} onChange={(e)=>setPaidLeave(e.target.value)} />
+						</div>
+						<div className="md:col-span-4 grid md:grid-cols-3 gap-3">
+							{paidLeaveTypes.map((p,idx)=>(
+								<div key={idx}>
+									<label className="block text-sm mb-1 text-amber-900">{p.type.charAt(0).toUpperCase()+p.type.slice(1)} Leave (days)</label>
+									<input type="number" className="w-full border border-amber-300 rounded px-3 py-2" value={p.days} onChange={(e)=>{
+										setPaidLeaveTypes(prev=>prev.map((x,i)=> i===idx ? { ...x, days: Number(e.target.value)||0 } : x));
+									}} />
+								</div>
+							))}
 						</div>
 						<div>
 							<label className="block text-sm mb-1 text-amber-900">Effective From</label>
@@ -204,6 +216,33 @@ export default function PayrollPage() {
 								<div className="text-sm opacity-70">Payable</div>
 								<div className="text-2xl font-bold">{monthly.payable.toFixed(2)}</div>
 							</div>
+							{(monthly.allowedPerType?.length || monthly.usedPerType?.length) ? (
+								<div className="md:col-span-3">
+									<div className="text-amber-900 font-medium mb-2">Paid Leave Breakdown</div>
+									<table className="min-w-[500px] w-full">
+										<thead>
+											<tr className="bg-amber-50 text-amber-900">
+												<th className="text-left p-2 border-b border-amber-200">Type</th>
+												<th className="text-left p-2 border-b border-amber-200">Allowed</th>
+												<th className="text-left p-2 border-b border-amber-200">Used</th>
+											</tr>
+										</thead>
+										<tbody>
+											{Array.from(new Set([...(monthly.allowedPerType||[]).map(x=>x.type), ...(monthly.usedPerType||[]).map(x=>x.type)])).map(t=>{
+												const a=(monthly.allowedPerType||[]).find(x=>x.type===t)?.days ?? 0;
+												const u=(monthly.usedPerType||[]).find(x=>x.type===t)?.days ?? 0;
+												return (
+												<tr key={t}>
+													<td className="p-2 border-t border-amber-100">{t}</td>
+													<td className="p-2 border-t border-amber-100">{a}</td>
+													<td className="p-2 border-t border-amber-100">{u}</td>
+												</tr>
+											);
+											})}
+										</tbody>
+									</table>
+								</div>
+							) : null}
 						</div>
 					)}
 				</div>

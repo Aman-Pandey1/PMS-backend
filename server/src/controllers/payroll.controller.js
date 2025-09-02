@@ -8,12 +8,12 @@ export async function getUserSalary(req, res) {
 
 export async function setUserSalary(req, res) {
 	const { id } = req.params;
-	const { designation, baseSalary, securityAmount, effectiveFrom, paidLeavePerMonth } = req.body || {};
+	const { designation, baseSalary, securityAmount, effectiveFrom, paidLeavePerMonth, paidLeaveTypes } = req.body || {};
 	const { User } = await import('../models/User.js');
 	const u = await User.findById(id).lean();
 	if (!u) return res.status(404).json({ error: 'User not found' });
 	if (req.user.role === 'COMPANY_ADMIN' && String(u.companyId) !== String(req.user.companyId)) return res.status(403).json({ error: 'Forbidden' });
-	const item = await Salary.create({ userId: id, companyId: u.companyId, designation, baseSalary, securityAmount, effectiveFrom, paidLeavePerMonth });
+	const item = await Salary.create({ userId: id, companyId: u.companyId, designation, baseSalary, securityAmount, effectiveFrom, paidLeavePerMonth, paidLeaveTypes });
 	res.status(201).json(item);
 }
 
@@ -58,23 +58,45 @@ export async function computeMonthlySalary(req, res) {
 		for (let d = new Date(s); d <= e; d.setDate(d.getDate()+1)) arr.push(iso(d));
 		return arr;
 	}
-	const leaveDates = new Set();
+	const usedPerTypeMap = new Map();
 	for (const l of leaves) {
+		const type = l.leaveType || 'other';
 		for (const d of datesBetween(l.startDate, l.endDate)) {
 			const dd = new Date(d);
 			if (dd < start || dd > end) continue;
-			if (weeklyOffDays.includes(dd.getDay())) continue; // Sundays not counted as paid leave
-			if (holidayDatesSet.has(d)) continue; // holidays not counted as paid leave
-			leaveDates.add(d);
+			if (weeklyOffDays.includes(dd.getDay())) continue;
+			if (holidayDatesSet.has(d)) continue;
+			usedPerTypeMap.set(type, (usedPerTypeMap.get(type) || 0) + 1);
 		}
 	}
-	const allowedPaid = Number(salary.paidLeavePerMonth || 0);
-	const unpaidLeaveDays = Math.max(0, leaveDates.size - allowedPaid);
+	const definedTypes = Array.isArray(salary.paidLeaveTypes) && salary.paidLeaveTypes.length > 0;
+	const allowancePerTypeMap = new Map();
+	if (definedTypes) {
+		for (const t of salary.paidLeaveTypes) {
+			if (!t) continue;
+			allowancePerTypeMap.set(t.type || 'other', Number(t.days || 0));
+		}
+	}
+	const usedTotal = Array.from(usedPerTypeMap.values()).reduce((a,b)=>a+b,0);
+	const allowedTotal = definedTypes ? Array.from(allowancePerTypeMap.values()).reduce((a,b)=>a+b,0) : Number(salary.paidLeavePerMonth || 0);
+	let unpaidLeaveDays = 0;
+	if (definedTypes) {
+		const allTypes = new Set([...usedPerTypeMap.keys(), ...allowancePerTypeMap.keys()]);
+		for (const t of allTypes) {
+			const used = usedPerTypeMap.get(t) || 0;
+			const allowed = allowancePerTypeMap.get(t) || 0;
+			unpaidLeaveDays += Math.max(0, used - allowed);
+		}
+	} else {
+		unpaidLeaveDays = Math.max(0, usedTotal - allowedTotal);
+	}
 	// Daily rate based on working days only
 	const dailyRate = workingDays ? (Number(salary.baseSalary) / workingDays) : 0;
 	const deduction = dailyRate * unpaidLeaveDays;
 	const payable = Math.max(0, Number(salary.baseSalary) - deduction);
-	res.json({ period: ym, baseSalary: Number(salary.baseSalary), workingDays, paidLeaveAllowed: allowedPaid, leaveDays: leaveDates.size, unpaidLeaveDays, deduction, payable });
+	const usedPerType = Array.from(usedPerTypeMap.entries()).map(([type, days]) => ({ type, days }));
+	const allowedPerType = definedTypes ? Array.from(allowancePerTypeMap.entries()).map(([type, days]) => ({ type, days })) : [];
+	res.json({ period: ym, baseSalary: Number(salary.baseSalary), workingDays, paidLeaveAllowed: allowedTotal, leaveDays: usedTotal, unpaidLeaveDays, deduction, payable, allowedPerType, usedPerType });
 }
 
 export async function companyPayrollSummary(req, res) {
