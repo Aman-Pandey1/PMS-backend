@@ -51,17 +51,17 @@ export default function AttendancePage() {
 			setCoords({ longitude, latitude });
             reverseGeocode(latitude, longitude).then(setCity).catch(()=>{});
 			if (!checkedIn) {
-				await (await import('../services/attendance.js')).checkIn(longitude, latitude);
+				const res = await (await import('../services/attendance.js')).checkIn(longitude, latitude);
 				setCheckedIn(true);
 				startRef.current = Date.now();
 				startTimer();
-				setMsg('Checked in');
+				setMsg(res?.alert ? `Checked in (Alert: ${res.alert})` : 'Checked in');
 			} else {
-				await (await import('../services/attendance.js')).checkOut(report, longitude, latitude);
+				const res = await (await import('../services/attendance.js')).checkOut(report, longitude, latitude);
 				setCheckedIn(false);
 				setReport('');
 				stopTimer();
-				setMsg('Checked out');
+				setMsg(res?.status === 'FLAGGED' ? 'Checked out (Alert: outside allowed location)' : 'Checked out');
 			}
 			const { getMyAttendance } = await import('../services/attendance.js');
 			const data = await getMyAttendance();

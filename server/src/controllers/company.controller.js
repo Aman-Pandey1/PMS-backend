@@ -28,7 +28,19 @@ export async function getCompany(req, res) {
 }
 
 export async function updateCompany(req, res) {
-	const item = await Company.findByIdAndUpdate(req.params.id, req.body, { new: true });
+	const { id } = req.params;
+	const body = req.body || {};
+	if (req.user.role === 'COMPANY_ADMIN') {
+		if (String(req.user.companyId) !== String(id)) return res.status(403).json({ error: 'Forbidden' });
+		const patch = {};
+		if (body.address) patch.address = body.address;
+		if (body.geofenceCenter) patch.geofenceCenter = body.geofenceCenter;
+		if (typeof body.geofenceRadiusMeters === 'number') patch.geofenceRadiusMeters = body.geofenceRadiusMeters;
+		const updated = await Company.findByIdAndUpdate(id, patch, { new: true });
+		if (!updated) return res.status(404).json({ error: 'Not found' });
+		return res.json(updated);
+	}
+	const item = await Company.findByIdAndUpdate(id, body, { new: true });
 	if (!item) return res.status(404).json({ error: 'Not found' });
 	res.json(item);
 }
