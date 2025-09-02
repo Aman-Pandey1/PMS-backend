@@ -125,6 +125,7 @@ export default function LeavesPage() {
 				</div>
 				)}
 
+				{(user?.role === 'EMPLOYEE' || user?.role === 'SUPERVISOR') && (
 				<div className="bg-white border border-amber-300 rounded p-4 overflow-x-auto">
 					<div className="text-amber-900 font-medium mb-3">My Leaves</div>
 					<table className="min-w-[600px] w-full">
@@ -153,6 +154,7 @@ export default function LeavesPage() {
                         </div>
                     </div>
 				</div>
+				)}
 			</div>
 
 			{(user?.role === 'SUPER_ADMIN' || user?.role === 'COMPANY_ADMIN' || user?.role === 'SUPERVISOR') && (

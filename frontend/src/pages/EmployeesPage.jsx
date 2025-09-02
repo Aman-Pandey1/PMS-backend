@@ -95,6 +95,7 @@ export default function EmployeesPage() {
                     </select>
                 </div>
             )}
+			{user?.role !== 'SUPER_ADMIN' && (
 			<div className="bg-white border border-amber-300 rounded p-4">
 				<div className="text-amber-900 font-medium mb-3">Create Employee</div>
 				<form onSubmit={onCreate} className="grid md:grid-cols-5 gap-3">
@@ -133,6 +134,7 @@ export default function EmployeesPage() {
 					</div>
 				</form>
 			</div>
+			)}
 
 			<div className="overflow-x-auto bg-white border border-amber-300 rounded">
 				<table className="min-w-[900px] w-full">
