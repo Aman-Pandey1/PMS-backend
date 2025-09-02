@@ -8,9 +8,73 @@ export async function getUserSalary(req, res) {
 
 export async function setUserSalary(req, res) {
 	const { id } = req.params;
-	const { designation, baseSalary, securityAmount, effectiveFrom } = req.body || {};
-	const item = await Salary.create({ userId: id, companyId: req.user.companyId, designation, baseSalary, securityAmount, effectiveFrom });
+	const { designation, baseSalary, securityAmount, effectiveFrom, paidLeavePerMonth } = req.body || {};
+	const { User } = await import('../models/User.js');
+	const u = await User.findById(id).lean();
+	if (!u) return res.status(404).json({ error: 'User not found' });
+	if (req.user.role === 'COMPANY_ADMIN' && String(u.companyId) !== String(req.user.companyId)) return res.status(403).json({ error: 'Forbidden' });
+	const item = await Salary.create({ userId: id, companyId: u.companyId, designation, baseSalary, securityAmount, effectiveFrom, paidLeavePerMonth });
 	res.status(201).json(item);
+}
+
+export async function computeMonthlySalary(req, res) {
+	const { userId } = req.params;
+	const { year, month } = req.query;
+	const ym = { year: Number(year), month: Number(month) };
+	if (!ym.year || !ym.month) return res.status(400).json({ error: 'year and month required' });
+	const start = new Date(ym.year, ym.month - 1, 1);
+	const end = new Date(ym.year, ym.month, 0);
+	const { Attendance } = await import('../models/Attendance.js');
+	const { LeaveRequest } = await import('../models/LeaveRequest.js');
+	const { Company } = await import('../models/Company.js');
+	const { User } = await import('../models/User.js');
+	const u = await User.findById(userId).lean();
+	if (!u) return res.status(404).json({ error: 'User not found' });
+	if (req.user.role === 'COMPANY_ADMIN' && String(u.companyId) !== String(req.user.companyId)) return res.status(403).json({ error: 'Forbidden' });
+	const targetCompanyId = u.companyId;
+	const salary = await Salary.findOne({ userId, companyId: targetCompanyId, effectiveFrom: { $lte: end } }).sort({ effectiveFrom: -1 }).lean();
+	if (!salary) return res.status(404).json({ error: 'No salary set' });
+	const company = await Company.findById(targetCompanyId).lean();
+	const weeklyOffDays = company?.weeklyOffDays?.length ? company.weeklyOffDays : [0];
+	const holidayDatesSet = new Set((company?.holidayDates || []).map(h => h.date));
+	const iso = (d)=> new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+	// Count working days in month excluding weekly offs and holidays
+	let workingDays = 0;
+	for (let d = new Date(start); d <= end; d.setDate(d.getDate()+1)) {
+		const day = d.getDay();
+		const dateStr = iso(d);
+		if (weeklyOffDays.includes(day)) continue; // exclude Sundays or configured weekly offs
+		if (holidayDatesSet.has(dateStr)) continue;
+		workingDays++;
+	}
+	// Approved leaves within month
+	const leaves = await LeaveRequest.find({ userId, companyId: req.user.companyId, status: 'APPROVED', $or: [
+		{ startDate: { $lte: iso(end) }, endDate: { $gte: iso(start) } },
+	] }).lean();
+	function datesBetween(a, b) {
+		const arr = [];
+		const s = new Date(a);
+		const e = new Date(b);
+		for (let d = new Date(s); d <= e; d.setDate(d.getDate()+1)) arr.push(iso(d));
+		return arr;
+	}
+	const leaveDates = new Set();
+	for (const l of leaves) {
+		for (const d of datesBetween(l.startDate, l.endDate)) {
+			const dd = new Date(d);
+			if (dd < start || dd > end) continue;
+			if (weeklyOffDays.includes(dd.getDay())) continue; // Sundays not counted as paid leave
+			if (holidayDatesSet.has(d)) continue; // holidays not counted as paid leave
+			leaveDates.add(d);
+		}
+	}
+	const allowedPaid = Number(salary.paidLeavePerMonth || 0);
+	const unpaidLeaveDays = Math.max(0, leaveDates.size - allowedPaid);
+	// Daily rate based on working days only
+	const dailyRate = workingDays ? (Number(salary.baseSalary) / workingDays) : 0;
+	const deduction = dailyRate * unpaidLeaveDays;
+	const payable = Math.max(0, Number(salary.baseSalary) - deduction);
+	res.json({ period: ym, baseSalary: Number(salary.baseSalary), workingDays, paidLeaveAllowed: allowedPaid, leaveDays: leaveDates.size, unpaidLeaveDays, deduction, payable });
 }
 
 export async function companyPayrollSummary(req, res) {

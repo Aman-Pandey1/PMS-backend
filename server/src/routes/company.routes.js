@@ -30,4 +30,16 @@ r.patch('/me/geo', requireRoles('COMPANY_ADMIN'), async (req, res) => {
 	res.json({ id: updated.id, allowedGeoZones: updated.allowedGeoZones, allowedGeoCenter: updated.allowedGeoCenter, allowedGeoRadiusMeters: updated.allowedGeoRadiusMeters });
 });
 
+// Company Admin: update leave calendar (weekly off and holidays)
+r.patch('/me/leave-calendar', requireRoles('COMPANY_ADMIN'), async (req, res) => {
+	const companyId = req.user.companyId;
+	if (!companyId) return res.status(400).json({ error: 'No company' });
+	const { weeklyOffDays, holidayDates } = req.body || {};
+	const payload = {};
+	if (Array.isArray(weeklyOffDays)) payload.weeklyOffDays = weeklyOffDays.map(Number).filter(n => n >= 0 && n <= 6);
+	if (Array.isArray(holidayDates)) payload.holidayDates = holidayDates.filter(h => h && typeof h.date === 'string').map(h => ({ date: h.date, label: h.label || '' }));
+	const updated = await Company.findByIdAndUpdate(companyId, payload, { new: true });
+	res.json({ id: updated.id, weeklyOffDays: updated.weeklyOffDays, holidayDates: updated.holidayDates });
+});
+
 export default r;

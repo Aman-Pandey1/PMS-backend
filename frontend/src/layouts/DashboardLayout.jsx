@@ -94,8 +94,25 @@ export default function DashboardLayout() {
 				document.head.appendChild(link);
 			} catch {}
 		}
+		try { document.title = unread.length ? `(${unread.length}) EMS` : 'EMS'; } catch {}
+		try { if (navigator.setAppBadge) { if (unread.length) navigator.setAppBadge(unread.length); else navigator.clearAppBadge(); } } catch {}
 		updateFavicon(unread.length || 0);
 	}, [unread.length]);
+
+	// React to notification read events to update UI immediately
+	useEffect(() => {
+		function onNotifRead(e) {
+			const id = e?.detail?.id;
+			if (!id) return;
+			setUnread(prev => {
+				const next = prev.filter(n => (n._id || n.id) !== id);
+				if (next.length === 0) setShowPopup(false);
+				return next;
+			});
+		}
+		window.addEventListener('notification:read', onNotifRead);
+		return () => window.removeEventListener('notification:read', onNotifRead);
+	}, []);
 
 	async function dismissAndMarkAllRead() {
 		try {

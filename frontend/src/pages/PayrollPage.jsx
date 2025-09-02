@@ -1,8 +1,210 @@
+import { useEffect, useState } from 'react';
+import { useAuth } from '../contexts/AuthContext.jsx';
+
 export default function PayrollPage() {
+	const { user } = useAuth();
+	const [tab, setTab] = useState('setup');
+	const [companies, setCompanies] = useState([]);
+	const [selectedCompany, setSelectedCompany] = useState('');
+	const [employees, setEmployees] = useState([]);
+	const [selectedEmployee, setSelectedEmployee] = useState('');
+	const [designation, setDesignation] = useState('');
+	const [baseSalary, setBaseSalary] = useState('');
+	const [paidLeave, setPaidLeave] = useState('0');
+	const [effectiveFrom, setEffectiveFrom] = useState('');
+	const [salaryHistory, setSalaryHistory] = useState([]);
+	const [year, setYear] = useState(new Date().getFullYear());
+	const [month, setMonth] = useState(new Date().getMonth()+1);
+	const [monthly, setMonthly] = useState(null);
+	const [msg, setMsg] = useState('');
+	const [errMsg, setErrMsg] = useState('');
+
+	useEffect(() => {
+		(async () => {
+			try {
+				if (user?.role === 'SUPER_ADMIN') {
+					const { listCompanies } = await import('../services/companies.js');
+					setCompanies(await listCompanies());
+				}
+			} catch {}
+		})();
+	}, [user?.role]);
+
+	useEffect(() => {
+		(async () => {
+			try {
+				setEmployees([]);
+				setSelectedEmployee('');
+				if (!user?.role) return;
+				const { listUsers } = await import('../services/users.js');
+				if (user.role === 'COMPANY_ADMIN') {
+					setEmployees(await listUsers());
+				} else if (user.role === 'SUPER_ADMIN' && selectedCompany) {
+					setEmployees(await listUsers(selectedCompany));
+				}
+			} catch {}
+		})();
+	}, [user?.role, selectedCompany]);
+
+	async function loadSalaryHistory(uid) {
+		try {
+			const { getUserSalary } = await import('../services/payroll.js');
+			setSalaryHistory(await getUserSalary(uid));
+		} catch {}
+	}
+
+	useEffect(() => {
+		if (selectedEmployee) loadSalaryHistory(selectedEmployee);
+	}, [selectedEmployee]);
+
+	async function saveSalary(e) {
+		e.preventDefault(); setMsg(''); setErrMsg('');
+		if (!selectedEmployee) { setErrMsg('Select employee'); return; }
+		try {
+			const { setUserSalary } = await import('../services/payroll.js');
+			await setUserSalary(selectedEmployee, {
+				designation,
+				baseSalary: Number(baseSalary),
+				paidLeavePerMonth: Number(paidLeave),
+				effectiveFrom: effectiveFrom || new Date().toISOString(),
+			});
+			setMsg('Salary saved');
+			setDesignation(''); setBaseSalary(''); setPaidLeave('0'); setEffectiveFrom('');
+			loadSalaryHistory(selectedEmployee);
+		} catch (e) { setErrMsg(e?.response?.data?.error || 'Failed to save salary'); }
+	}
+
+	async function compute() {
+		setMsg(''); setErrMsg(''); setMonthly(null);
+		if (!selectedEmployee) { setErrMsg('Select employee'); return; }
+		try {
+			const { computeMonthly } = await import('../services/payroll.js');
+			setMonthly(await computeMonthly(selectedEmployee, year, month));
+		} catch (e) { setErrMsg(e?.response?.data?.error || 'Failed to compute'); }
+	}
+
+	const employeePicker = (
+		<div className="flex gap-2 items-center">
+			{user?.role === 'SUPER_ADMIN' && (
+				<select value={selectedCompany} onChange={(e)=>{ setSelectedCompany(e.target.value); setSelectedEmployee(''); }} className="border border-amber-300 rounded px-2 py-1">
+					<option value="">Select company</option>
+					{companies.map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
+				</select>
+			)}
+			<select value={selectedEmployee} onChange={(e)=>setSelectedEmployee(e.target.value)} className="border border-amber-300 rounded px-2 py-1">
+				<option value="">Select employee</option>
+				{employees.map(u => <option key={u.id} value={u.id}>{u.fullName || u.email || u.id}</option>)}
+			</select>
+		</div>
+	);
+
 	return (
 		<div className="space-y-4">
 			<h1 className="text-2xl font-bold">Payroll</h1>
-			<div className="text-sm opacity-70">This page is under construction.</div>
+			{msg && <div className="text-green-800 bg-green-50 border border-green-200 rounded p-2">{msg}</div>}
+			{errMsg && <div className="text-red-800 bg-red-50 border border-red-200 rounded p-2">{errMsg}</div>}
+
+			<div className="flex gap-2">
+				<button onClick={()=>setTab('setup')} className={(tab==='setup'?'bg-amber-700 text-white':'border text-amber-900')+" rounded px-3 py-1 border-amber-300"}>Setup</button>
+				<button onClick={()=>setTab('monthly')} className={(tab==='monthly'?'bg-amber-700 text-white':'border text-amber-900')+" rounded px-3 py-1 border-amber-300"}>Monthly Salary</button>
+			</div>
+
+			{tab==='setup' && (
+				<div className="bg-white border border-amber-300 rounded p-4 grid gap-3">
+					<div className="text-amber-900 font-medium">Set Base Salary and Paid Leave</div>
+					{employeePicker}
+					<form onSubmit={saveSalary} className="grid md:grid-cols-4 gap-3">
+						<div>
+							<label className="block text-sm mb-1 text-amber-900">Designation</label>
+							<input className="w-full border border-amber-300 rounded px-3 py-2" value={designation} onChange={(e)=>setDesignation(e.target.value)} />
+						</div>
+						<div>
+							<label className="block text-sm mb-1 text-amber-900">Base Salary (per month)</label>
+							<input type="number" className="w-full border border-amber-300 rounded px-3 py-2" value={baseSalary} onChange={(e)=>setBaseSalary(e.target.value)} />
+						</div>
+						<div>
+							<label className="block text-sm mb-1 text-amber-900">Paid Leave / Month</label>
+							<input type="number" className="w-full border border-amber-300 rounded px-3 py-2" value={paidLeave} onChange={(e)=>setPaidLeave(e.target.value)} />
+						</div>
+						<div>
+							<label className="block text-sm mb-1 text-amber-900">Effective From</label>
+							<input type="date" className="w-full border border-amber-300 rounded px-3 py-2" value={effectiveFrom} onChange={(e)=>setEffectiveFrom(e.target.value)} />
+						</div>
+						<div className="md:col-span-4 flex justify-end">
+							<button className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">Save</button>
+						</div>
+					</form>
+					<div className="overflow-x-auto">
+						<div className="text-amber-900 font-medium mt-2">Salary History</div>
+						<table className="min-w-[700px] w-full">
+							<thead>
+								<tr className="bg-amber-50 text-amber-900">
+									<th className="text-left p-2 border-b border-amber-200">Effective From</th>
+									<th className="text-left p-2 border-b border-amber-200">Designation</th>
+									<th className="text-left p-2 border-b border-amber-200">Base Salary</th>
+									<th className="text-left p-2 border-b border-amber-200">Paid Leave/Month</th>
+								</tr>
+							</thead>
+							<tbody>
+								{salaryHistory.map(s => (
+									<tr key={s._id}>
+										<td className="p-2 border-t border-amber-100">{new Date(s.effectiveFrom).toLocaleDateString()}</td>
+										<td className="p-2 border-t border-amber-100">{s.designation}</td>
+										<td className="p-2 border-t border-amber-100">{s.baseSalary}</td>
+										<td className="p-2 border-t border-amber-100">{s.paidLeavePerMonth ?? 0}</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			)}
+
+			{tab==='monthly' && (
+				<div className="bg-white border border-amber-300 rounded p-4 grid gap-3">
+					<div className="text-amber-900 font-medium">Monthly Salary</div>
+					{employeePicker}
+					<div className="flex gap-2 items-center">
+						<input type="number" className="border border-amber-300 rounded px-2 py-1 w-28" value={year} onChange={(e)=>setYear(Number(e.target.value))} />
+						<select className="border border-amber-300 rounded px-2 py-1" value={month} onChange={(e)=>setMonth(Number(e.target.value))}>
+							{Array.from({length:12}).map((_,i)=>(<option key={i+1} value={i+1}>{i+1}</option>))}
+						</select>
+						<button onClick={compute} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-1">Compute</button>
+					</div>
+					{monthly && (
+						<div className="grid md:grid-cols-3 gap-3">
+							<div className="p-3 border border-amber-200 rounded">
+								<div className="text-sm opacity-70">Base Salary</div>
+								<div className="text-xl font-semibold">{monthly.baseSalary}</div>
+							</div>
+							<div className="p-3 border border-amber-200 rounded">
+								<div className="text-sm opacity-70">Working Days</div>
+								<div className="text-xl font-semibold">{monthly.workingDays}</div>
+							</div>
+							<div className="p-3 border border-amber-200 rounded">
+								<div className="text-sm opacity-70">Paid Leave Allowed</div>
+								<div className="text-xl font-semibold">{monthly.paidLeaveAllowed}</div>
+							</div>
+							<div className="p-3 border border-amber-200 rounded">
+								<div className="text-sm opacity-70">Leave Days</div>
+								<div className="text-xl font-semibold">{monthly.leaveDays}</div>
+							</div>
+							<div className="p-3 border border-amber-200 rounded">
+								<div className="text-sm opacity-70">Unpaid Leave Days</div>
+								<div className="text-xl font-semibold">{monthly.unpaidLeaveDays}</div>
+							</div>
+							<div className="p-3 border border-amber-200 rounded">
+								<div className="text-sm opacity-70">Deduction</div>
+								<div className="text-xl font-semibold">{monthly.deduction.toFixed(2)}</div>
+							</div>
+							<div className="p-3 border border-amber-200 rounded md:col-span-3">
+								<div className="text-sm opacity-70">Payable</div>
+								<div className="text-2xl font-bold">{monthly.payable.toFixed(2)}</div>
+							</div>
+						</div>
+					)}
+				</div>
+			)}
 		</div>
 	);
 }

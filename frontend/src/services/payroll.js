@@ -9,3 +9,13 @@ export async function getUserSalary(userId) {
 	const { data } = await api.get(`/payroll/user/${userId}/salary`);
 	return data.items;
 }
+
+export async function setUserSalary(userId, payload) {
+	const { data } = await api.post(`/payroll/user/${userId}/salary`, payload);
+	return data;
+}
+
+export async function computeMonthly(userId, year, month) {
+	const { data } = await api.get(`/payroll/user/${userId}/monthly?year=${year}&month=${month}`);
+	return data;
+}

@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 
 export default function LeavesPage() {
 	const { user } = useAuth();
+	const [company, setCompany] = useState(null);
 	const [start, setStart] = useState('');
 	const [end, setEnd] = useState('');
 	const [reason, setReason] = useState('');
@@ -56,6 +57,17 @@ export default function LeavesPage() {
 			clearInterval(id);
 		};
 	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [user?.role]);
+
+	useEffect(() => {
+		(async () => {
+			try {
+				if (user?.role === 'EMPLOYEE' || user?.role === 'SUPERVISOR') {
+					const { getMyCompany } = await import('../services/companies.js');
+					setCompany(await getMyCompany());
+				}
+			} catch {}
+		})();
 	}, [user?.role]);
 
 	useEffect(() => {
@@ -136,6 +148,14 @@ export default function LeavesPage() {
 				{(user?.role === 'EMPLOYEE' || user?.role === 'SUPERVISOR') && (
 				<div className="bg-white border border-amber-300 rounded p-4">
 					<div className="text-amber-900 font-medium mb-3">Apply Leave</div>
+					{company && (
+						<div className="mb-3 text-sm opacity-80">
+							<div>Weekly Offs: {(company.weeklyOffDays||[0]).map(d=>['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]).join(', ')}</div>
+							{(company.holidayDates||[]).length>0 && (
+								<div>Holidays: {(company.holidayDates||[]).map(h=>`${h.date}${h.label?` (${h.label})`:''}`).join(', ')}</div>
+							)}
+						</div>
+					)}
 					<form onSubmit={submit} className="grid gap-2">
 						<label className="text-sm text-amber-900">Start date</label>
 						<input type="date" className={"border rounded px-3 py-2 " + (errors.start ? 'border-red-500' : 'border-amber-300')} value={start} onChange={(e) => setStart(e.target.value)} />
