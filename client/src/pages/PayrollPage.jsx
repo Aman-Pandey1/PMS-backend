@@ -21,6 +21,8 @@ export default function PayrollPage() {
 	const [errMsg, setErrMsg] = useState('');
 	const [overviewRows, setOverviewRows] = useState([]);
 	const [overviewLoading, setOverviewLoading] = useState(false);
+	const [empRows, setEmpRows] = useState([]);
+	const [empLoading, setEmpLoading] = useState(false);
 
 	useEffect(() => {
 		(async () => {
@@ -112,6 +114,7 @@ export default function PayrollPage() {
 				<button onClick={()=>setTab('setup')} className={(tab==='setup'?'bg-amber-700 text-white':'border text-amber-900')+" rounded px-3 py-1 border-amber-300"}>Setup</button>
 				<button onClick={()=>setTab('monthly')} className={(tab==='monthly'?'bg-amber-700 text-white':'border text-amber-900')+" rounded px-3 py-1 border-amber-300"}>Monthly Salary</button>
 				<button onClick={()=>setTab('overview')} className={(tab==='overview'?'bg-amber-700 text-white':'border text-amber-900')+" rounded px-3 py-1 border-amber-300"}>Overview</button>
+				<button onClick={()=>setTab('employees')} className={(tab==='employees'?'bg-amber-700 text-white':'border text-amber-900')+" rounded px-3 py-1 border-amber-300"}>Employees</button>
 			</div>
 
 			{tab==='setup' && (
@@ -169,6 +172,107 @@ export default function PayrollPage() {
 										<td className="p-2 border-t border-amber-100">{s.paidLeavePerMonth ?? 0}</td>
 									</tr>
 								))}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			)}
+
+			{tab==='employees' && (
+				<div className="bg-white border border-amber-300 rounded p-4 grid gap-3">
+					<div className="text-amber-900 font-medium">Employees - Base Salary & Paid Leave (editable)</div>
+					<div className="flex flex-wrap gap-2 items-center">
+						{user?.role === 'SUPER_ADMIN' && (
+							<select value={selectedCompany} onChange={(e)=>{ setSelectedCompany(e.target.value); setEmpRows([]); }} className="border border-amber-300 rounded px-2 py-1">
+								<option value="">Select company</option>
+								{companies.map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
+							</select>
+						)}
+						<button onClick={async()=>{
+							setErrMsg(''); setMsg(''); setEmpLoading(true); setEmpRows([]);
+							try {
+								let list = employees;
+								if (user?.role === 'SUPER_ADMIN') {
+									if (!selectedCompany) { setErrMsg('Select company'); setEmpLoading(false); return; }
+									const { listUsers } = await import('../services/users.js');
+									list = await listUsers(selectedCompany);
+								}
+								const { getUserSalary } = await import('../services/payroll.js');
+								const rows = [];
+								for (const u of list) {
+									try {
+										const items = await getUserSalary(u.id);
+										const latest = items?.[0] || {};
+										rows.push({
+											id: u.id,
+											name: u.fullName || u.email || u.id,
+											designation: latest.designation || 'Employee',
+											baseSalary: latest.baseSalary || 0,
+											paidLeavePerMonth: latest.paidLeavePerMonth ?? 0,
+											paidLeaveTypes: Array.isArray(latest.paidLeaveTypes) && latest.paidLeaveTypes.length
+												? latest.paidLeaveTypes
+												: [{ type: 'emergency', days: 0 }, { type: 'sick', days: 0 }, { type: 'vacation', days: 0 }],
+										});
+									} catch {
+										rows.push({ id: u.id, name: u.fullName || u.email || u.id, designation: 'Employee', baseSalary: 0, paidLeavePerMonth: 0, paidLeaveTypes: [{ type: 'emergency', days: 0 }, { type: 'sick', days: 0 }, { type: 'vacation', days: 0 }] });
+									}
+								}
+								setEmpRows(rows);
+							} finally {
+								setEmpLoading(false);
+							}
+						}} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-1">Load Employees</button>
+					</div>
+					<div className="overflow-x-auto">
+						<table className="min-w-[900px] w-full">
+							<thead>
+								<tr className="bg-amber-50 text-amber-900">
+									<th className="text-left p-2 border-b border-amber-200">Employee</th>
+									<th className="text-left p-2 border-b border-amber-200">Designation</th>
+									<th className="text-left p-2 border-b border-amber-200">Base Salary</th>
+									<th className="text-left p-2 border-b border-amber-200">Paid Leave/Month</th>
+									<th className="text-left p-2 border-b border-amber-200">Emergency</th>
+									<th className="text-left p-2 border-b border-amber-200">Sick</th>
+									<th className="text-left p-2 border-b border-amber-200">Vacation</th>
+									<th className="text-left p-2 border-b border-amber-200">Actions</th>
+								</tr>
+							</thead>
+							<tbody>
+								{empLoading ? (
+									<tr><td className="p-2" colSpan={8}>Loading...</td></tr>
+								) : (
+									empRows.map((r, idx) => (
+										<tr key={r.id}>
+											<td className="p-2 border-t border-amber-100">{r.name}</td>
+											<td className="p-2 border-t border-amber-100"><input className="border border-amber-300 rounded px-2 py-1 w-40" value={r.designation} onChange={(e)=>setEmpRows(rows=>rows.map((x,i)=>i===idx?{...x, designation:e.target.value}:x))} /></td>
+											<td className="p-2 border-t border-amber-100"><input type="number" className="border border-amber-300 rounded px-2 py-1 w-32" value={r.baseSalary} onChange={(e)=>setEmpRows(rows=>rows.map((x,i)=>i===idx?{...x, baseSalary:Number(e.target.value)||0}:x))} /></td>
+											<td className="p-2 border-t border-amber-100"><input type="number" className="border border-amber-300 rounded px-2 py-1 w-28" value={r.paidLeavePerMonth} onChange={(e)=>setEmpRows(rows=>rows.map((x,i)=>i===idx?{...x, paidLeavePerMonth:Number(e.target.value)||0}:x))} /></td>
+											{['emergency','sick','vacation'].map((t,j)=>(
+												<td key={t} className="p-2 border-t border-amber-100"><input type="number" className="border border-amber-300 rounded px-2 py-1 w-24" value={(r.paidLeaveTypes.find(x=>x.type===t)?.days) ?? 0} onChange={(e)=>{
+													const val = Number(e.target.value)||0;
+													setEmpRows(rows=>rows.map((x,i)=>{
+														if (i!==idx) return x;
+														const arr = Array.isArray(x.paidLeaveTypes)?[...x.paidLeaveTypes]:[];
+														const k = arr.findIndex(y=>y.type===t);
+														if (k>=0) arr[k] = { ...arr[k], days: val };
+														else arr.push({ type: t, days: val });
+														return { ...x, paidLeaveTypes: arr };
+													}));
+												}} /></td>
+											))}
+											<td className="p-2 border-t border-amber-100">
+												<button onClick={async()=>{
+													setErrMsg(''); setMsg('');
+													try {
+														const { setUserSalary } = await import('../services/payroll.js');
+														await setUserSalary(r.id, { designation: r.designation || 'Employee', baseSalary: Number(r.baseSalary)||0, paidLeavePerMonth: Number(r.paidLeavePerMonth)||0, paidLeaveTypes: r.paidLeaveTypes, effectiveFrom: new Date().toISOString() });
+														setMsg('Saved');
+													} catch (e) { setErrMsg(e?.response?.data?.error || 'Failed to save'); }
+												}} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-1">Save</button>
+											</td>
+										</tr>
+									))
+								)}
 							</tbody>
 						</table>
 					</div>
