@@ -14,11 +14,17 @@ import PayrollPage from './pages/PayrollPage.jsx';
 import NotificationsPage from './pages/NotificationsPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
 import AttendanceCompany from './pages/AttendanceCompany.jsx';
+import HomePage from './pages/HomePage.jsx';
+import AboutPage from './pages/AboutPage.jsx';
+import ShopPage from './pages/ShopPage.jsx';
 
 export default function App() {
 	return (
 		<Routes>
 			<Route path="/login" element={<LoginPage />} />
+			<Route path="/home" element={<HomePage />} />
+			<Route path="/about" element={<AboutPage />} />
+			<Route path="/shop" element={<ShopPage />} />
 			<Route
 				path="/"
 				element={

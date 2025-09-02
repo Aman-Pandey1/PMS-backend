@@ -1,11 +1,10 @@
 import express from 'express';
-const Router = express.Router;
 import multer from 'multer';
 import path from 'path';
 import { listUserDocuments, uploadUserDocument, listCompanyDocuments, downloadDocument } from '../controllers/document.controller.js';
 import { requireAuth } from '../middleware/auth.js';
 
-const r = Router();
+const r = express.Router();
 
 // Configure multer for local uploads
 const uploadDir = path.resolve(process.cwd(), 'uploads');

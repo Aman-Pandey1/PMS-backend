@@ -1,9 +1,8 @@
 import express from 'express';
-const Router = express.Router;
 import { listNotifications, markRead, getNotification } from '../controllers/notification.controller.js';
 import { requireAuth } from '../middleware/auth.js';
 
-const r = Router();
+const r = express.Router();
 
 r.use(requireAuth);
 r.get('/', listNotifications);
