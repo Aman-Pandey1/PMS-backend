@@ -36,3 +36,8 @@ export async function getMyCompany() {
 	const { data } = await api.get('/companies/me');
 	return data;
 }
+
+export async function updateMyCompanyGeo(payload) {
+	const { data } = await api.patch('/companies/me/geo', payload);
+	return data;
+}

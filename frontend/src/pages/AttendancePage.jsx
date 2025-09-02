@@ -68,7 +68,11 @@ export default function AttendancePage() {
 			setRecent(data);
             setPage(1);
 		} catch (e) {
-			setErrMsg(e?.response?.data?.error || 'Action failed');
+			const err = e?.response?.data?.error || 'Action failed';
+			setErrMsg(err);
+			if (String(err).toLowerCase().includes('outside allowed')) {
+				alert('You are outside the allowed location for check-in/out.');
+			}
 		}
 	}
 
