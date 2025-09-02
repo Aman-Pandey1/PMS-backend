@@ -30,5 +30,5 @@ export async function myCompany(req, res) {
 	if (!companyId) return res.status(404).json({ error: 'No company' });
 	const c = await Company.findById(companyId);
 	if (!c) return res.status(404).json({ error: 'Not found' });
-	res.json({ id: c.id, name: c.name, code: c.code, status: c.status, logo: c.logo });
+	res.json({ id: c.id, name: c.name, code: c.code, status: c.status, logo: c.logo, address: c.address, allowedGeoZones: c.allowedGeoZones, allowedGeoCenter: c.allowedGeoCenter, allowedGeoRadiusMeters: c.allowedGeoRadiusMeters });
 }
