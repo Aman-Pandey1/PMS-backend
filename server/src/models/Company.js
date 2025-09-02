@@ -14,6 +14,10 @@ const companySchema = new Schema({
 		country: { type: String },
 		zip: { type: String },
 	},
+	// Allowed geofence zones for attendance: array of GeoJSON polygons or a center+radius
+	allowedGeoZones: { type: Array, default: [] },
+	allowedGeoCenter: { type: { type: String, enum: ['Point'], default: 'Point' }, coordinates: { type: [Number], default: undefined } },
+	allowedGeoRadiusMeters: { type: Number, default: undefined },
 	description: { type: String },
 	logo: { type: String },
 	geofenceCenter: { type: { type: String, enum: ['Point'], default: 'Point' }, coordinates: { type: [Number], default: undefined } },

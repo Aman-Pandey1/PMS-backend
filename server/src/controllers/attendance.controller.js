@@ -13,8 +13,11 @@ export async function checkIn(req, res) {
 	const exists = await Attendance.findOne({ userId, date });
 	if (exists) return res.status(409).json({ error: 'Already checked in today' });
 	const user = await User.findById(userId).lean();
-	if (user?.geoAllowedZones && user.geoAllowedZones.length > 0) {
-		const inside = user.geoAllowedZones.some((poly) => {
+	// Company-level geofence takes precedence; fallback to user-level if defined
+	const company = await Company.findById(companyId).lean();
+	let isInside = true;
+	if (company?.allowedGeoZones && Array.isArray(company.allowedGeoZones) && company.allowedGeoZones.length > 0) {
+		isInside = company.allowedGeoZones.some((poly) => {
 			try {
 				if (poly.type === 'Polygon') {
 					const coords = poly.coordinates[0];
@@ -30,18 +33,39 @@ export async function checkIn(req, res) {
 				return false;
 			} catch { return false; }
 		});
-		if (!inside) return res.status(403).json({ error: 'Outside allowed location' });
 	}
-	// Company geofence enforcement (center + radius)
-	const company = await Company.findById(companyId).lean();
-	if (company?.geofenceCenter?.coordinates && typeof company?.geofenceRadiusMeters === 'number' && company.geofenceRadiusMeters > 0) {
-		const [centerLon, centerLat] = company.geofenceCenter.coordinates;
-		const distanceMeters = haversineMeters(lat, lon, centerLat, centerLon);
-		if (distanceMeters > company.geofenceRadiusMeters) {
-			const rec = await Attendance.create({ userId, companyId, date, checkInAt: new Date(), checkInLocation: { type: 'Point', coordinates: [lon, lat] }, dailyReport: { submitted: false }, status: 'FLAGGED' });
-			return res.status(201).json({ ...rec.toObject(), alert: 'Outside allowed location' });
-		}
+	if (isInside && company?.allowedGeoCenter?.coordinates && company?.allowedGeoRadiusMeters) {
+		try {
+			const [clon, clat] = company.allowedGeoCenter.coordinates;
+			const toRad = (d) => d * Math.PI / 180;
+			const R = 6371000;
+			const dLat = toRad(lat - clat);
+			const dLon = toRad(lon - clon);
+			const a = Math.sin(dLat/2)**2 + Math.cos(toRad(clat)) * Math.cos(toRad(lat)) * Math.sin(dLon/2)**2;
+			const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+			const dist = R * c;
+			isInside = dist <= company.allowedGeoRadiusMeters;
+		} catch {}
 	}
+	if (!isInside && user?.geoAllowedZones && user.geoAllowedZones.length > 0) {
+		isInside = user.geoAllowedZones.some((poly) => {
+			try {
+				if (poly.type === 'Polygon') {
+					const coords = poly.coordinates[0];
+					let c = false;
+					for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
+						const xi = coords[i][0], yi = coords[i][1];
+						const xj = coords[j][0], yj = coords[j][1];
+						const intersect = ((yi > lat) !== (yj > lat)) && (lon < (xj - xi) * (lat - yi) / (yj - yi + Number.EPSILON) + xi);
+						if (intersect) c = !c;
+					}
+					return c;
+				}
+				return false;
+			} catch { return false; }
+		});
+	}
+	if (!isInside) return res.status(403).json({ error: 'Outside allowed location' });
 	const rec = await Attendance.create({ userId, companyId, date, checkInAt: new Date(), checkInLocation: { type: 'Point', coordinates: [lon, lat] }, dailyReport: { submitted: false }, status: 'OPEN' });
 	res.status(201).json(rec);
 }
@@ -58,19 +82,7 @@ export async function checkOut(req, res) {
 	rec.dailyReport = { submitted: true, text: report };
 	rec.checkOutAt = new Date();
 	rec.checkOutLocation = { type: 'Point', coordinates: [lon, lat] };
-	// Evaluate geofence on checkout too
-	const company = await Company.findById(companyId).lean();
-	if (company?.geofenceCenter?.coordinates && typeof company?.geofenceRadiusMeters === 'number' && company.geofenceRadiusMeters > 0 && lon !== undefined && lat !== undefined) {
-		const [centerLon, centerLat] = company.geofenceCenter.coordinates;
-		const distanceMeters = haversineMeters(lat, lon, centerLat, centerLon);
-		if (distanceMeters > company.geofenceRadiusMeters) {
-			rec.status = 'FLAGGED';
-		} else if (rec.status !== 'FLAGGED') {
-			rec.status = 'CLOSED';
-		}
-	} else {
-		rec.status = rec.status === 'FLAGGED' ? 'FLAGGED' : 'CLOSED';
-	}
+	rec.status = 'CLOSED';
 	await rec.save();
 	res.json(rec);
 }
@@ -101,14 +113,4 @@ export async function companyAttendance(req, res) {
 	const map = new Map(users.map(u => [String(u._id), u]));
 	const withUsers = items.map(i => ({ ...i, user: map.get(String(i.userId)) || null }));
 	res.json({ items: withUsers });
-}
-
-function haversineMeters(lat1, lon1, lat2, lon2) {
-	const R = 6371000;
-	const toRad = (d) => d * Math.PI / 180;
-	const dLat = toRad(lat2 - lat1);
-	const dLon = toRad(lon2 - lon1);
-	const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2);
-	const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-	return R * c;
 }
