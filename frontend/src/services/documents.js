@@ -5,8 +5,11 @@ export async function listUserDocuments(userId) {
 	return data.items;
 }
 
-export async function uploadUserDocument(userId, input) {
-	const { data } = await api.post(`/documents/user/${userId}`, input);
+export async function uploadUserDocument(userId, { type, file }) {
+	const form = new FormData();
+	form.append('type', type);
+	if (file) form.append('file', file);
+	const { data } = await api.post(`/documents/user/${userId}`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
 	return data;
 }
 
@@ -17,7 +20,17 @@ export async function listCompanyDocuments(params = {}) {
 }
 
 export async function downloadDocument(documentId) {
-	// For local provider we stream the file. Use blob and trigger download.
+	// Try blob; handle json URL response as well
 	const res = await api.get(`/documents/download/${documentId}`, { responseType: 'blob' });
+	const contentType = res.headers['content-type'] || '';
+	if (contentType.includes('application/json')) {
+		const text = await res.data.text();
+		const obj = JSON.parse(text || '{}');
+		if (obj.url) {
+			const fileRes = await fetch(obj.url);
+			return await fileRes.blob();
+		}
+		throw new Error('Invalid download response');
+	}
 	return res.data;
 }

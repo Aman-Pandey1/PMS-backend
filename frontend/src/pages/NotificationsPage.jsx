@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { useAuth } from '../contexts/AuthContext.jsx';
 
 export default function NotificationsPage() {
 	const [items, setItems] = useState([]);
+	const { user } = useAuth();
 
 	useEffect(() => {
 		(async () => {
@@ -23,7 +25,15 @@ export default function NotificationsPage() {
 					<div key={n._id} className="border rounded p-3 flex justify-between items-center">
 						<div>
 							<div className="font-medium">{n.title}</div>
-							<div className="text-sm opacity-70">{n.body}</div>
+							<div className="text-sm opacity-70">
+								{user?.role === 'SUPER_ADMIN' && (n.company?.name || n.company?.code || n.user?.companyId) ? (
+									<span className="mr-1">{n.company?.name || n.company?.code}</span>
+								) : null}
+								{user?.role === 'SUPER_ADMIN' && (n.user?.fullName || n.user?.email) ? (
+									<span> - {n.user?.fullName || n.user?.email}</span>
+								) : null}
+								{(user?.role !== 'SUPER_ADMIN') ? n.body : (n.body ? ` · ${n.body}` : '')}
+							</div>
 						</div>
 						{!n.readAt && (
 							<button className="text-sm underline" onClick={() => markRead(n._id)}>Mark read</button>
