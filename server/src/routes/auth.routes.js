@@ -1,9 +1,8 @@
 import express from 'express';
-const Router = express.Router;
 import { login, me, updateMe } from '../controllers/auth.controller.js';
 import { requireAuth } from '../middleware/auth.js';
 
-const r = Router();
+const r = express.Router();
 
 r.post('/login', login);
 r.get('/me', requireAuth, me);

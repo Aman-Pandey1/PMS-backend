@@ -1,5 +1,4 @@
 import express from 'express';
-const Router = express.Router;
 import authRouter from './auth.routes.js';
 import companyRouter from './company.routes.js';
 import userRouter from './user.routes.js';
@@ -11,7 +10,7 @@ import payrollRouter from './payroll.routes.js';
 import notificationRouter from './notification.routes.js';
 import dashboardRouter from './dashboard.routes.js';
 
-const router = Router();
+const router = express.Router();
 
 router.use('/auth', authRouter);
 router.use('/dashboard', dashboardRouter);
