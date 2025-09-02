@@ -94,7 +94,7 @@ export default function AttendancePage() {
 			<h1 className="text-2xl font-bold">Attendance</h1>
 			{msg && <div className="text-green-800 bg-green-50 border border-green-200 rounded p-2">{msg}</div>}
 			{errMsg && <div className="text-red-800 bg-red-50 border border-red-200 rounded p-2">{errMsg}</div>}
-			{(window.localStorage.getItem('auth:user') ? (JSON.parse(window.localStorage.getItem('auth:user'))?.role) : '') === 'EMPLOYEE' ? (
+			{(['EMPLOYEE','SUPERVISOR'].includes((window.localStorage.getItem('auth:user') ? (JSON.parse(window.localStorage.getItem('auth:user'))?.role) : ''))) ? (
 				<>
 					<div className="flex items-center gap-4">
 						<button className="bg-amber-700 hover:bg-amber-800 text-white px-3 py-2 rounded" onClick={toggle} disabled={checkedIn && !report && elapsed>0 && false}>{checkedIn ? 'Check out' : 'Check in'}</button>

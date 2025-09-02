@@ -25,8 +25,23 @@ export async function uploadUserDocument(req, res) {
 	const { id } = req.params; // user id
 	const targetUserId = id === 'me' ? req.user.uid : id;
 	if (req.user.role !== 'SUPER_ADMIN' && req.user.uid !== targetUserId) return res.status(403).json({ error: 'Forbidden' });
-	const { type, name } = req.body || {};
-	const doc = await UserDocument.create({ userId: targetUserId, companyId: req.user.companyId, type, storage: { provider: 'local', key: name } });
+	const type = req.body?.type;
+	if (!type) return res.status(400).json({ error: 'type required' });
+
+	let storage = null;
+	let metadata = {};
+	if (req.file) {
+		storage = { provider: 'local', key: req.file.filename };
+		metadata = { originalName: req.file.originalname, mimeType: req.file.mimetype, size: req.file.size };
+	} else if (req.body?.name) {
+		// Fallback: legacy behavior without actual file upload
+		storage = { provider: 'local', key: req.body.name };
+		metadata = { originalName: req.body.name };
+	} else {
+		return res.status(400).json({ error: 'file required' });
+	}
+
+	const doc = await UserDocument.create({ userId: targetUserId, companyId: req.user.companyId, type, storage, metadata });
 	res.status(201).json(doc);
 }
 

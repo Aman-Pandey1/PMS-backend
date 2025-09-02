@@ -9,3 +9,8 @@ export async function markNotificationRead(id) {
 	const { data } = await api.patch(`/notifications/${id}/read`);
 	return data;
 }
+
+export async function getNotification(id) {
+	const { data } = await api.get(`/notifications/${id}`);
+	return data;
+}

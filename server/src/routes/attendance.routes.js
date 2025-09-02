@@ -6,8 +6,8 @@ import { requireAuth, requireRoles } from '../middleware/auth.js';
 const r = Router();
 
 r.use(requireAuth);
-r.post('/check-in', requireRoles('EMPLOYEE'), checkIn);
-r.post('/check-out', requireRoles('EMPLOYEE'), checkOut);
+r.post('/check-in', requireRoles('EMPLOYEE','SUPERVISOR'), checkIn);
+r.post('/check-out', requireRoles('EMPLOYEE','SUPERVISOR'), checkOut);
 r.get('/me', requireRoles('EMPLOYEE','SUPERVISOR'), myAttendance);
 r.get('/company', companyAttendance);
 
