@@ -18,6 +18,15 @@ export async function listNotifications(req, res) {
 		});
 		return res.json({ items: withUsers });
 	}
+	if (req.user.role === 'COMPANY_ADMIN' || req.user.role === 'SUPERVISOR') {
+		const companyUserIds = await User.find({ companyId: req.user.companyId }).select('_id').lean();
+		const ids = companyUserIds.map(u => String(u._id));
+		const items = await Notification.find({ userId: { $in: ids } }).sort({ createdAt: -1 }).limit(100).lean();
+		const users = await User.find({ _id: { $in: ids } }).select('fullName email').lean();
+		const map = new Map(users.map(u => [String(u._id), u]));
+		const withUsers = items.map(i => ({ ...i, user: map.get(String(i.userId)) || null }));
+		return res.json({ items: withUsers });
+	}
 	const items = await Notification.find({ userId: req.user.uid }).sort({ createdAt: -1 }).limit(50);
 	res.json({ items });
 }
@@ -27,4 +36,20 @@ export async function markRead(req, res) {
 	const item = await Notification.findOneAndUpdate({ _id: id, userId: req.user.uid }, { readAt: new Date() }, { new: true });
 	if (!item) return res.status(404).json({ error: 'Not found' });
 	res.json(item);
+}
+
+export async function getNotification(req, res) {
+	const { id } = req.params;
+	const n = await Notification.findById(id).lean();
+	if (!n) return res.status(404).json({ error: 'Not found' });
+	if (req.user.role === 'SUPER_ADMIN') {
+		return res.json(n);
+	}
+	if (req.user.role === 'COMPANY_ADMIN' || req.user.role === 'SUPERVISOR') {
+		const u = await User.findById(n.userId).select('companyId').lean();
+		if (!u || String(u.companyId) !== String(req.user.companyId)) return res.status(403).json({ error: 'Forbidden' });
+		return res.json(n);
+	}
+	if (String(n.userId) !== String(req.user.uid)) return res.status(403).json({ error: 'Forbidden' });
+	res.json(n);
 }
