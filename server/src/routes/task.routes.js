@@ -1,4 +1,5 @@
-import { Router } from 'express';
+import express from 'express';
+const Router = express.Router;
 import { createTask, myAssignedTasks, myCreatedTasks, updateTask, getTask, addTaskUpdate, filterTasks } from '../controllers/task.controller.js';
 import { requireAuth, requireRoles } from '../middleware/auth.js';
 

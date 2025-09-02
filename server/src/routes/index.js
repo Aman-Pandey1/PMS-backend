@@ -1,4 +1,5 @@
-import { Router } from 'express';
+import express from 'express';
+const Router = express.Router;
 import authRouter from './auth.routes.js';
 import companyRouter from './company.routes.js';
 import userRouter from './user.routes.js';
