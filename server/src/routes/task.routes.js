@@ -1,8 +1,8 @@
-import { Router } from 'express';
+import express from 'express';
 import { createTask, myAssignedTasks, myCreatedTasks, updateTask, getTask, addTaskUpdate, filterTasks } from '../controllers/task.controller.js';
 import { requireAuth, requireRoles } from '../middleware/auth.js';
 
-const r = Router();
+const r = express.Router();
 
 r.use(requireAuth);
 r.post('/', requireRoles('SUPERVISOR'), createTask);

@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+// Removed TypeScript-only type import from express to avoid ESM/CJS interop error
 import fs from 'fs';
 import path from 'path';
 import { UserDocument } from '../models/Document.js';

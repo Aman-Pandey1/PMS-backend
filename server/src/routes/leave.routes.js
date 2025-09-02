@@ -1,8 +1,8 @@
-import { Router } from 'express';
+import express from 'express';
 import { requestLeave, approveLeave, rejectLeave, myLeaves, companyLeaves } from '../controllers/leave.controller.js';
 import { requireAuth, requireRoles } from '../middleware/auth.js';
 
-const r = Router();
+const r = express.Router();
 
 r.use(requireAuth);
 r.post('/', requireRoles('EMPLOYEE', 'SUPERVISOR'), requestLeave);

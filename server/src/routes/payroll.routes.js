@@ -1,8 +1,8 @@
-import { Router } from 'express';
+import express from 'express';
 import { companyPayrollSummary, getUserSalary, setUserSalary } from '../controllers/payroll.controller.js';
 import { requireAuth, requireRoles } from '../middleware/auth.js';
 
-const r = Router();
+const r = express.Router();
 
 r.use(requireAuth);
 r.get('/company/:companyId/summary', requireRoles('COMPANY_ADMIN', 'SUPER_ADMIN'), companyPayrollSummary);
