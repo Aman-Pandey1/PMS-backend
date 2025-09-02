@@ -8,6 +8,7 @@ export default function LeavesPage() {
 	const [start, setStart] = useState('');
 	const [end, setEnd] = useState('');
 	const [reason, setReason] = useState('');
+	const [leaveType, setLeaveType] = useState('emergency');
 	const [errors, setErrors] = useState({});
 	const [myList, setMyList] = useState([]);
 	const [companyList, setCompanyList] = useState([]);
@@ -100,7 +101,7 @@ export default function LeavesPage() {
 		if (Object.keys(errs).length) return;
 		try {
 			const leavesSvc = await import('../services/leaves.js');
-			await leavesSvc.requestLeave({ startDate: start, endDate: end, reason });
+			await leavesSvc.requestLeave({ startDate: start, endDate: end, reason, leaveType });
 			setStart(''); setEnd(''); setReason('');
 			setMsg('Leave applied successfully');
 			load();
@@ -172,6 +173,13 @@ export default function LeavesPage() {
 						{errors.end && <div className="text-xs text-red-600">{errors.end}</div>}
 						<label className="text-sm text-amber-900">Reason</label>
 						<input className={"border rounded px-3 py-2 " + (errors.reason ? 'border-red-500' : 'border-amber-300')} placeholder="Reason" value={reason} onChange={(e) => setReason(e.target.value)} />
+						<label className="text-sm text-amber-900">Leave Type</label>
+						<select className="border rounded px-3 py-2 border-amber-300" value={leaveType} onChange={(e)=>setLeaveType(e.target.value)}>
+							<option value="emergency">Emergency</option>
+							<option value="sick">Sick</option>
+							<option value="vacation">Vacation</option>
+							<option value="other">Other</option>
+						</select>
 						{errors.reason && <div className="text-xs text-red-600">{errors.reason}</div>}
 						<button className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-2 mt-2">Submit</button>
 					</form>

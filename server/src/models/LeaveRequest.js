@@ -7,6 +7,7 @@ const leaveSchema = new Schema({
 	companyId: { type: Schema.Types.ObjectId, ref: 'Company', required: true, index: true },
 	startDate: { type: String, required: true },
 	endDate: { type: String, required: true },
+	leaveType: { type: String, enum: ['emergency','sick','vacation','other'], default: 'other' },
 	reason: { type: String, required: true },
 	status: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED'], default: 'PENDING', index: true },
 	approverChain: { type: [Schema.Types.ObjectId], default: [] },
