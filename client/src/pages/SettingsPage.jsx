@@ -16,6 +16,7 @@ export default function SettingsPage() {
 	const [holidayInputDate, setHolidayInputDate] = useState('');
 	const [holidayInputLabel, setHolidayInputLabel] = useState('');
 	const [holidays, setHolidays] = useState([]);
+	const [policy, setPolicy] = useState([{ type: 'emergency', days: 0 }, { type: 'sick', days: 0 }, { type: 'vacation', days: 0 }]);
 
 	useEffect(() => {
 		(async () => {
@@ -36,6 +37,7 @@ export default function SettingsPage() {
 				if (c?.allowedGeoRadiusMeters) setRadius(String(c.allowedGeoRadiusMeters));
 				if (c?.weeklyOffDays) setWeeklyOffDays(c.weeklyOffDays);
 				if (c?.holidayDates) setHolidays(c.holidayDates);
+				if (Array.isArray(c?.paidLeavePolicy) && c.paidLeavePolicy.length) setPolicy(c.paidLeavePolicy);
 			} catch {}
 		})();
 	}, []);
@@ -154,6 +156,22 @@ export default function SettingsPage() {
 					</div>
 					<div className="md:col-span-3 flex justify-end">
 						<button onClick={async()=>{ setMsg(''); setErrMsg(''); try { const { updateMyCompanyLeaveCalendar } = await import('../services/companies.js'); await updateMyCompanyLeaveCalendar({ weeklyOffDays, holidayDates: holidays }); setMsg('Leave calendar saved'); } catch (e) { setErrMsg(e?.response?.data?.error || 'Failed to save leave calendar'); } }} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">Save Leave Calendar</button>
+					</div>
+
+					<div className="md:col-span-3 border-t my-2"></div>
+					<div className="md:col-span-3 text-amber-900 font-medium">Paid Leave Policy</div>
+					<div className="md:col-span-3 grid md:grid-cols-3 gap-3">
+						{policy.map((p, idx) => (
+							<div key={idx}>
+								<label className="block text-sm mb-1 text-amber-900">{p.type.charAt(0).toUpperCase()+p.type.slice(1)} (days/month)</label>
+								<input type="number" className="w-full border border-amber-300 rounded px-3 py-2" value={p.days} onChange={(e)=>{
+									const v = Number(e.target.value)||0; setPolicy(prev=>prev.map((x,i)=> i===idx?{...x, days:v}:x));
+								}} />
+							</div>
+						))}
+					</div>
+					<div className="md:col-span-3 flex justify-end">
+						<button onClick={async()=>{ setMsg(''); setErrMsg(''); try { const { updateMyCompanyPaidLeavePolicy } = await import('../services/companies.js'); await updateMyCompanyPaidLeavePolicy(policy); setMsg('Paid leave policy saved'); } catch (e) { setErrMsg(e?.response?.data?.error || 'Failed to save paid leave policy'); } }} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">Save Paid Leave Policy</button>
 					</div>
 				</div>
 			) : (

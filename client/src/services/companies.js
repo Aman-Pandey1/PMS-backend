@@ -46,3 +46,8 @@ export async function updateMyCompanyLeaveCalendar(payload) {
 	const { data } = await api.patch('/companies/me/leave-calendar', payload);
 	return data;
 }
+
+export async function updateMyCompanyPaidLeavePolicy(paidLeavePolicy) {
+	const { data } = await api.patch('/companies/me/paid-leave-policy', { paidLeavePolicy });
+	return data;
+}

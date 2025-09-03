@@ -41,4 +41,15 @@ r.patch('/me/leave-calendar', requireRoles('COMPANY_ADMIN'), async (req, res) =>
 	res.json({ id: updated.id, weeklyOffDays: updated.weeklyOffDays, holidayDates: updated.holidayDates });
 });
 
+// Company Admin: update paid leave policy (per-type monthly allowance)
+r.patch('/me/paid-leave-policy', requireRoles('COMPANY_ADMIN'), async (req, res) => {
+	const companyId = req.user.companyId;
+	if (!companyId) return res.status(400).json({ error: 'No company' });
+	const { paidLeavePolicy } = req.body || {};
+	const payload = {};
+	if (Array.isArray(paidLeavePolicy)) payload.paidLeavePolicy = paidLeavePolicy.filter(x => x && typeof x.type === 'string').map(x => ({ type: x.type, days: Number(x.days || 0) }));
+	const updated = await Company.findByIdAndUpdate(companyId, payload, { new: true });
+	res.json({ id: updated.id, paidLeavePolicy: updated.paidLeavePolicy });
+});
+
 export default r;

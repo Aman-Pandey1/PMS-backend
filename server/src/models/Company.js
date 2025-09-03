@@ -25,6 +25,8 @@ const companySchema = new Schema({
 	// Company leave calendar
 	weeklyOffDays: { type: [Number], default: [0] }, // 0 = Sunday
 	holidayDates: { type: [ { date: { type: String }, label: { type: String } } ], default: [] },
+	// Company-level paid leave policy (per-type monthly allowance)
+	paidLeavePolicy: { type: [ { type: { type: String }, days: { type: Number } } ], default: [] },
 }, { timestamps: true });
 
 export const Company = model('Company', companySchema);
