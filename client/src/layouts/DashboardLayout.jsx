@@ -145,7 +145,10 @@ export default function DashboardLayout() {
 					)}
 					<Section title="Work" />
 					{(user?.role === 'EMPLOYEE' || user?.role === 'SUPERVISOR') && (
-						<SidebarLink to="/attendance" label="Attendance" />
+						<>
+							<SidebarLink to="/attendance" label="Attendance" />
+							<SidebarLink to="/payroll" label="Payroll" />
+						</>
 					)}
 					{(user?.role === 'COMPANY_ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'SUPERVISOR') && (
 						<SidebarLink to="/attendance/company" label="Company Attendance" />
