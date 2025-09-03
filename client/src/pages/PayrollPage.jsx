@@ -188,6 +188,10 @@ export default function PayrollPage() {
 								{companies.map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
 							</select>
 						)}
+						<input type="number" className="border border-amber-300 rounded px-2 py-1 w-28" value={year} onChange={(e)=>setYear(Number(e.target.value))} />
+						<select className="border border-amber-300 rounded px-2 py-1" value={month} onChange={(e)=>setMonth(Number(e.target.value))}>
+							{Array.from({length:12}).map((_,i)=>(<option key={i+1} value={i+1}>{i+1}</option>))}
+						</select>
 						<button onClick={async()=>{
 							setErrMsg(''); setMsg(''); setEmpLoading(true); setEmpRows([]);
 							try {
@@ -212,6 +216,8 @@ export default function PayrollPage() {
 											paidLeaveTypes: Array.isArray(latest.paidLeaveTypes) && latest.paidLeaveTypes.length
 												? latest.paidLeaveTypes
 												: [{ type: 'emergency', days: 0 }, { type: 'sick', days: 0 }, { type: 'vacation', days: 0 }],
+											deduction: undefined,
+											payable: undefined,
 										});
 									} catch {
 										rows.push({ id: u.id, name: u.fullName || u.email || u.id, designation: 'Employee', baseSalary: 0, paidLeavePerMonth: 0, paidLeaveTypes: [{ type: 'emergency', days: 0 }, { type: 'sick', days: 0 }, { type: 'vacation', days: 0 }] });
@@ -222,6 +228,20 @@ export default function PayrollPage() {
 								setEmpLoading(false);
 							}
 						}} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-1">Load Employees</button>
+						<button onClick={async()=>{
+							setErrMsg(''); setMsg('');
+							try {
+								const { computeMonthly } = await import('../services/payroll.js');
+								const out = [];
+								for (const r of empRows) {
+									try {
+										const m = await computeMonthly(r.id, year, month);
+										out.push({ id: r.id, deduction: m.deduction, payable: m.payable });
+									} catch { out.push({ id: r.id }); }
+								}
+								setEmpRows(rows=>rows.map(x=>{ const f=out.find(y=>y.id===x.id); return f?{...x, deduction:f.deduction, payable:f.payable}:x; }));
+							} catch {}
+						}} className="border border-amber-300 text-amber-900 rounded px-3 py-1">Compute Deductions</button>
 					</div>
 					<div className="overflow-x-auto">
 						<table className="min-w-[900px] w-full">
@@ -234,6 +254,8 @@ export default function PayrollPage() {
 									<th className="text-left p-2 border-b border-amber-200">Emergency</th>
 									<th className="text-left p-2 border-b border-amber-200">Sick</th>
 									<th className="text-left p-2 border-b border-amber-200">Vacation</th>
+									<th className="text-left p-2 border-b border-amber-200">Deduction</th>
+									<th className="text-left p-2 border-b border-amber-200">Payable</th>
 									<th className="text-left p-2 border-b border-amber-200">Actions</th>
 								</tr>
 							</thead>
@@ -260,6 +282,8 @@ export default function PayrollPage() {
 													}));
 												}} /></td>
 											))}
+											<td className="p-2 border-t border-amber-100">{typeof r.deduction==='number'? r.deduction.toFixed(2) : '-'}</td>
+											<td className="p-2 border-t border-amber-100">{typeof r.payable==='number'? r.payable.toFixed(2) : '-'}</td>
 											<td className="p-2 border-t border-amber-100">
 												<button onClick={async()=>{
 													setErrMsg(''); setMsg('');
