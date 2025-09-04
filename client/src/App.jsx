@@ -42,7 +42,7 @@ export default function App() {
 				<Route path="tasks" element={<TasksPage />} />
 				<Route path="tasks/assign" element={<ProtectedRoute roles={["SUPERVISOR"]}><TaskAssign /></ProtectedRoute>} />
 				<Route path="documents" element={<DocumentsPage />} />
-				{/* <Route path="payroll" element={<ProtectedRoute roles={['COMPANY_ADMIN','SUPER_ADMIN']}><PayrollPage /></ProtectedRoute>} /> */}
+				<Route path="payroll" element={<ProtectedRoute roles={['COMPANY_ADMIN','SUPER_ADMIN','SUPERVISOR','EMPLOYEE']}><PayrollPage /></ProtectedRoute>} />
 				<Route path="notifications" element={<NotificationsPage />} />
 				<Route path="settings" element={<SettingsPage />} />
 			</Route>

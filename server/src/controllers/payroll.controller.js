@@ -69,12 +69,23 @@ export async function computeMonthlySalary(req, res) {
 			usedPerTypeMap.set(type, (usedPerTypeMap.get(type) || 0) + 1);
 		}
 	}
-	const definedTypes = Array.isArray(salary.paidLeaveTypes) && salary.paidLeaveTypes.length > 0;
+	// Load company-level paid leave policy; salary-level overrides if defined
 	const allowancePerTypeMap = new Map();
-	if (definedTypes) {
+	let definedTypes = false;
+	if (Array.isArray(salary.paidLeaveTypes) && salary.paidLeaveTypes.length > 0) {
+		definedTypes = true;
 		for (const t of salary.paidLeaveTypes) {
 			if (!t) continue;
 			allowancePerTypeMap.set(t.type || 'other', Number(t.days || 0));
+		}
+	} else {
+		const companyPolicy = Array.isArray(company?.paidLeavePolicy) ? company.paidLeavePolicy : [];
+		if (companyPolicy.length > 0) {
+			definedTypes = true;
+			for (const p of companyPolicy) {
+				if (!p) continue;
+				allowancePerTypeMap.set(p.type || 'other', Number(p.days || 0));
+			}
 		}
 	}
 	const usedTotal = Array.from(usedPerTypeMap.values()).reduce((a,b)=>a+b,0);
@@ -121,7 +132,10 @@ export async function myLeaveBalance(req, res) {
 	if (!u) return res.status(404).json({ error: 'User not found' });
 	const targetCompanyId = u.companyId;
 	const salary = await Salary.findOne({ userId: uid, companyId: targetCompanyId, effectiveFrom: { $lte: end } }).sort({ effectiveFrom: -1 }).lean();
-	const allowedPaid = Number(salary?.paidLeavePerMonth || 0);
+	// For balance: prefer salary per-type, else company policy per-type; fallback to overall.
+	let allowedPaid = Number(salary?.paidLeavePerMonth || 0);
+	const perType = Array.isArray(salary?.paidLeaveTypes) && salary.paidLeaveTypes.length ? salary.paidLeaveTypes : (Array.isArray((await (await import('../models/Company.js')).Company.findById(targetCompanyId).lean())?.paidLeavePolicy) ? (await (await import('../models/Company.js')).Company.findById(targetCompanyId).lean()).paidLeavePolicy : []);
+	if (perType.length) allowedPaid = perType.reduce((a,b)=>a + Number(b?.days||0), 0);
 	const company = await Company.findById(targetCompanyId).lean();
 	const weeklyOffDays = company?.weeklyOffDays?.length ? company.weeklyOffDays : [0];
 	const holidayDatesSet = new Set((company?.holidayDates || []).map(h => h.date));
