@@ -13,10 +13,12 @@ export async function checkIn(req, res) {
 	const exists = await Attendance.findOne({ userId, date });
 	if (exists) return res.status(409).json({ error: 'Already checked in today' });
 	const user = await User.findById(userId).lean();
-	// Company-level geofence takes precedence; fallback to user-level if defined
+	// Company-level geofence: use polygons if defined, else center+radius; fallback to user-level zones
 	const company = await Company.findById(companyId).lean();
+	const hasPolys = Array.isArray(company?.allowedGeoZones) && company.allowedGeoZones.length > 0;
+	const hasCircle = company?.allowedGeoCenter?.coordinates && company?.allowedGeoRadiusMeters;
 	let isInside = true;
-	if (company?.allowedGeoZones && Array.isArray(company.allowedGeoZones) && company.allowedGeoZones.length > 0) {
+	if (hasPolys) {
 		isInside = company.allowedGeoZones.some((poly) => {
 			try {
 				if (poly.type === 'Polygon') {
@@ -33,8 +35,7 @@ export async function checkIn(req, res) {
 				return false;
 			} catch { return false; }
 		});
-	}
-	if (isInside && company?.allowedGeoCenter?.coordinates && company?.allowedGeoRadiusMeters) {
+	} else if (hasCircle) {
 		try {
 			const [clon, clat] = company.allowedGeoCenter.coordinates;
 			const toRad = (d) => d * Math.PI / 180;
@@ -45,7 +46,7 @@ export async function checkIn(req, res) {
 			const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 			const dist = R * c;
 			isInside = dist <= company.allowedGeoRadiusMeters;
-		} catch {}
+		} catch { isInside = true; }
 	}
 	if (!isInside && user?.geoAllowedZones && user.geoAllowedZones.length > 0) {
 		isInside = user.geoAllowedZones.some((poly) => {
@@ -79,10 +80,49 @@ export async function checkOut(req, res) {
 	const rec = await Attendance.findOne({ userId, date });
 	if (!rec) return res.status(404).json({ error: 'No open attendance' });
 	if (!report) return res.status(400).json({ error: 'Daily report required' });
+	// Determine if checkout location is outside allowed area; flag if outside but still allow checkout
+	let flagged = false;
+	try {
+		const company = await Company.findById(companyId).lean();
+		const hasPolys = Array.isArray(company?.allowedGeoZones) && company.allowedGeoZones.length > 0;
+		const hasCircle = company?.allowedGeoCenter?.coordinates && company?.allowedGeoRadiusMeters;
+		let inside = true;
+		if (lon !== undefined && lat !== undefined) {
+			if (hasPolys) {
+				inside = company.allowedGeoZones.some((poly) => {
+					try {
+						if (poly.type === 'Polygon') {
+							const coords = poly.coordinates[0];
+							let c = false;
+							for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
+								const xi = coords[i][0], yi = coords[i][1];
+								const xj = coords[j][0], yj = coords[j][1];
+								const intersect = ((yi > lat) !== (yj > lat)) && (lon < (xj - xi) * (lat - yi) / (yj - yi + Number.EPSILON) + xi);
+								if (intersect) c = !c;
+							}
+							return c;
+						}
+						return false;
+					} catch { return false; }
+				});
+			} else if (hasCircle) {
+				const [clon, clat] = company.allowedGeoCenter.coordinates;
+				const toRad = (d) => d * Math.PI / 180;
+				const R = 6371000;
+				const dLat = toRad(lat - clat);
+				const dLon = toRad(lon - clon);
+				const a = Math.sin(dLat/2)**2 + Math.cos(toRad(clat)) * Math.cos(toRad(lat)) * Math.sin(dLon/2)**2;
+				const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+				const dist = R * c;
+				inside = dist <= company.allowedGeoRadiusMeters;
+			}
+			flagged = !inside;
+		}
+	} catch {}
 	rec.dailyReport = { submitted: true, text: report };
 	rec.checkOutAt = new Date();
-	rec.checkOutLocation = { type: 'Point', coordinates: [lon, lat] };
-	rec.status = 'CLOSED';
+	rec.checkOutLocation = (lon !== undefined && lat !== undefined) ? { type: 'Point', coordinates: [lon, lat] } : rec.checkOutLocation;
+	rec.status = flagged ? 'FLAGGED' : 'CLOSED';
 	await rec.save();
 	res.json(rec);
 }

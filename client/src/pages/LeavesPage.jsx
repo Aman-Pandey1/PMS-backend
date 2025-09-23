@@ -5,6 +5,7 @@ export default function LeavesPage() {
 	const { user } = useAuth();
 	const [company, setCompany] = useState(null);
 	const [leaveBalance, setLeaveBalance] = useState(null);
+	const [monthly, setMonthly] = useState(null);
 	const [start, setStart] = useState('');
 	const [end, setEnd] = useState('');
 	const [reason, setReason] = useState('');
@@ -70,6 +71,9 @@ export default function LeavesPage() {
 					const { myLeaveBalance } = await import('../services/payroll.js');
 					const now = new Date();
 					setLeaveBalance(await myLeaveBalance(now.getFullYear(), now.getMonth()+1));
+					// Load detailed monthly info (per-type allowance/usage + holidays in month)
+					const { myMonthly } = await import('../services/payroll.js');
+					setMonthly(await myMonthly(now.getFullYear(), now.getMonth()+1));
 				}
 			} catch {}
 		})();
@@ -156,9 +160,7 @@ export default function LeavesPage() {
 					{company && (
 						<div className="mb-3 text-sm opacity-80">
 							<div>Weekly Offs: {(company.weeklyOffDays||[0]).map(d=>['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]).join(', ')}</div>
-							{(company.holidayDates||[]).length>0 && (
-								<div>Holidays: {(company.holidayDates||[]).map(h=>`${h.date}${h.label?` (${h.label})`:''}`).join(', ')}</div>
-							)}
+							{/* Detailed holidays table shown below */}
 							{leaveBalance && (
 								<div className="mt-1">Paid Leave: {leaveBalance.remainingPaidLeave} remaining this month (allowed {leaveBalance.paidLeaveAllowed}, used {leaveBalance.usedPaidLeave})</div>
 							)}
@@ -268,6 +270,74 @@ export default function LeavesPage() {
                             <button onClick={()=>setCoPage(p=>Math.min(coTotal,p+1))} disabled={coPage>=coTotal} className="border border-amber-300 rounded px-3 py-1 disabled:opacity-50">Next</button>
                         </div>
                     </div>
+				</div>
+			)}
+
+			{/* Employee Panel: Paid Leave & Holidays (bottom section) */}
+			{(user?.role === 'EMPLOYEE' || user?.role === 'SUPERVISOR') && (
+				<div className="grid md:grid-cols-2 gap-6">
+					<div className="bg-white border border-amber-300 rounded p-4 overflow-x-auto">
+						<div className="text-amber-900 font-medium mb-3">Paid Leave Summary (This Month)</div>
+						<table className="min-w-[500px] w-full">
+							<thead>
+								<tr className="bg-amber-50 text-amber-900">
+									<th className="text-left p-2 border-b border-amber-200">Name</th>
+									<th className="text-left p-2 border-b border-amber-200">Allowed</th>
+									<th className="text-left p-2 border-b border-amber-200">Used</th>
+									<th className="text-left p-2 border-b border-amber-200">Available</th>
+								</tr>
+							</thead>
+							<tbody>
+								{(() => {
+									const rows = [];
+									const allowedMap = new Map((monthly?.allowedPerType||[]).map(x=>[x.type||'other', Number(x.days||0)]));
+									const usedMap = new Map((monthly?.usedPerType||[]).map(x=>[x.type||'other', Number(x.days||0)]));
+									const allTypes = new Set([...allowedMap.keys(), ...usedMap.keys()]);
+									if (allTypes.size > 0) {
+										for (const t of Array.from(allTypes)) {
+											const allowed = allowedMap.get(t) || 0;
+											const used = usedMap.get(t) || 0;
+											rows.push({ name: t.charAt(0).toUpperCase()+t.slice(1), allowed, used, available: Math.max(0, allowed - used) });
+										}
+									} else if (leaveBalance) {
+										rows.push({ name: 'Paid Leave', allowed: leaveBalance.paidLeaveAllowed, used: leaveBalance.usedPaidLeave, available: leaveBalance.remainingPaidLeave });
+									}
+									return rows.map((r, idx) => (
+										<tr key={idx}>
+											<td className="p-2 border-t border-amber-100">{r.name}</td>
+											<td className="p-2 border-t border-amber-100">{r.allowed}</td>
+											<td className="p-2 border-t border-amber-100">{r.used}</td>
+											<td className="p-2 border-t border-amber-100">{r.available}</td>
+										</tr>
+									));
+								})()}
+							</tbody>
+						</table>
+					</div>
+
+					<div className="bg-white border border-amber-300 rounded p-4 overflow-x-auto">
+						<div className="text-amber-900 font-medium mb-3">Holidays (This Month)</div>
+						<table className="min-w-[400px] w-full">
+							<thead>
+								<tr className="bg-amber-50 text-amber-900">
+									<th className="text-left p-2 border-b border-amber-200">Date</th>
+									<th className="text-left p-2 border-b border-amber-200">Label</th>
+								</tr>
+							</thead>
+							<tbody>
+								{(monthly?.holidays||[]).length === 0 ? (
+									<tr><td colSpan={2} className="p-3 text-sm opacity-70">No holidays this month.</td></tr>
+								) : (
+									(monthly?.holidays||[]).map((h) => (
+										<tr key={h.date}>
+											<td className="p-2 border-t border-amber-100">{h.date}</td>
+											<td className="p-2 border-t border-amber-100">{h.label || '-'}</td>
+										</tr>
+									))
+								)}
+							</tbody>
+						</table>
+					</div>
 				</div>
 			)}
 		</div>
