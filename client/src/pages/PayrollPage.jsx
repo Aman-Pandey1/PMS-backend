@@ -23,6 +23,11 @@ export default function PayrollPage() {
 	const [overviewLoading, setOverviewLoading] = useState(false);
 	const [empRows, setEmpRows] = useState([]);
 	const [empLoading, setEmpLoading] = useState(false);
+	// Employee self-view
+	const isEmployeeView = (user?.role === 'EMPLOYEE' || user?.role === 'SUPERVISOR');
+	const [myMonthlyData, setMyMonthlyData] = useState(null);
+	const [myYear, setMyYear] = useState(new Date().getFullYear());
+	const [myMonth, setMyMonth] = useState(new Date().getMonth()+1);
 
 	useEffect(() => {
 		(async () => {
@@ -50,6 +55,22 @@ export default function PayrollPage() {
 			} catch {}
 		})();
 	}, [user?.role, selectedCompany]);
+
+	// Load my monthly slip automatically for employees
+	useEffect(() => {
+		(async () => {
+			try {
+				if (!isEmployeeView) return;
+				setErrMsg(''); setMsg('');
+				const { myMonthly } = await import('../services/payroll.js');
+				setMyMonthlyData(await myMonthly(myYear, myMonth));
+			} catch (e) {
+				setMyMonthlyData(null);
+				setErrMsg(e?.response?.data?.error || 'Failed to load payslip');
+			}
+		})();
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [isEmployeeView, myYear, myMonth]);
 
 	async function loadSalaryHistory(uid) {
 		try {
@@ -87,6 +108,101 @@ export default function PayrollPage() {
 			const { computeMonthly } = await import('../services/payroll.js');
 			setMonthly(await computeMonthly(selectedEmployee, year, month));
 		} catch (e) { setErrMsg(e?.response?.data?.error || 'Failed to compute'); }
+	}
+
+	function formatCurrency(value) {
+		try { return Number(value).toFixed(2); } catch { return String(value); }
+	}
+
+	if (isEmployeeView) {
+		return (
+			<div className="space-y-4">
+				<h1 className="text-2xl font-bold">Payroll</h1>
+				{msg && <div className="text-green-800 bg-green-50 border border-green-200 rounded p-2">{msg}</div>}
+				{errMsg && <div className="text-red-800 bg-red-50 border border-red-200 rounded p-2">{errMsg}</div>}
+				<div className="bg-white border border-amber-300 rounded p-4 grid gap-3">
+					<div className="text-amber-900 font-medium">My Salary Slip</div>
+					<div className="flex gap-2 items-center">
+						<input type="number" className="border border-amber-300 rounded px-2 py-1 w-28" value={myYear} onChange={(e)=>setMyYear(Number(e.target.value)||new Date().getFullYear())} />
+						<select className="border border-amber-300 rounded px-2 py-1" value={myMonth} onChange={(e)=>setMyMonth(Number(e.target.value)||1)}>
+							{Array.from({length:12}).map((_,i)=>(<option key={i+1} value={i+1}>{i+1}</option>))}
+						</select>
+						<button onClick={async()=>{
+							setErrMsg(''); setMsg('');
+							try { const { myMonthly } = await import('../services/payroll.js'); setMyMonthlyData(await myMonthly(myYear, myMonth)); }
+							catch (e) { setMyMonthlyData(null); setErrMsg(e?.response?.data?.error || 'Failed to load payslip'); }
+						}} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-1">Refresh</button>
+					</div>
+					{myMonthlyData && (
+						<div className="grid gap-3">
+							<div className="grid md:grid-cols-3 gap-3">
+								<div className="p-3 border border-amber-200 rounded"><div className="text-sm opacity-70">Base Salary</div><div className="text-xl font-semibold">{myMonthlyData.baseSalary}</div></div>
+								<div className="p-3 border border-amber-200 rounded"><div className="text-sm opacity-70">Working Days</div><div className="text-xl font-semibold">{myMonthlyData.workingDays}</div></div>
+								<div className="p-3 border border-amber-200 rounded"><div className="text-sm opacity-70">Paid Leave Allowed</div><div className="text-xl font-semibold">{myMonthlyData.paidLeaveAllowed}</div></div>
+								<div className="p-3 border border-amber-200 rounded"><div className="text-sm opacity-70">Leave Days</div><div className="text-xl font-semibold">{myMonthlyData.leaveDays}</div></div>
+								<div className="p-3 border border-amber-200 rounded"><div className="text-sm opacity-70">Unpaid Leave Days</div><div className="text-xl font-semibold">{myMonthlyData.unpaidLeaveDays}</div></div>
+								<div className="p-3 border border-amber-200 rounded"><div className="text-sm opacity-70">Deduction</div><div className="text-xl font-semibold">{formatCurrency(myMonthlyData.deduction)}</div></div>
+								<div className="p-3 border border-amber-200 rounded md:col-span-3"><div className="text-sm opacity-70">Payable</div><div className="text-2xl font-bold">{formatCurrency(myMonthlyData.payable)}</div></div>
+							</div>
+							{(myMonthlyData.allowedPerType?.length || myMonthlyData.usedPerType?.length) ? (
+								<div>
+									<div className="text-amber-900 font-medium mb-2">Paid Leave Breakdown</div>
+									<table className="min-w-[600px] w-full">
+										<thead>
+											<tr className="bg-amber-50 text-amber-900">
+												<th className="text-left p-2 border-b border-amber-200">Type</th>
+												<th className="text-left p-2 border-b border-amber-200">Allowed</th>
+												<th className="text-left p-2 border-b border-amber-200">Used</th>
+												<th className="text-left p-2 border-b border-amber-200">Remaining</th>
+											</tr>
+										</thead>
+										<tbody>
+											{Array.from(new Set([...(myMonthlyData.allowedPerType||[]).map(x=>x.type), ...(myMonthlyData.usedPerType||[]).map(x=>x.type)])).map(t=>{
+												const a=(myMonthlyData.allowedPerType||[]).find(x=>x.type===t)?.days ?? 0;
+												const u=(myMonthlyData.usedPerType||[]).find(x=>x.type===t)?.days ?? 0;
+												const r=Math.max(0, a - u);
+												return (
+													<tr key={t}>
+														<td className="p-2 border-t border-amber-100 capitalize">{t}</td>
+														<td className="p-2 border-t border-amber-100">{a}</td>
+														<td className="p-2 border-t border-amber-100">{u}</td>
+														<td className="p-2 border-t border-amber-100">{r}</td>
+													</tr>
+												);
+											})}
+										</tbody>
+									</table>
+								</div>
+							) : null}
+
+							<div>
+								<div className="text-amber-900 font-medium mb-2">Holidays This Month</div>
+								{(myMonthlyData.holidays||[]).length ? (
+									<table className="min-w-[400px] w-full">
+										<thead>
+											<tr className="bg-amber-50 text-amber-900">
+												<th className="text-left p-2 border-b border-amber-200">Date</th>
+												<th className="text-left p-2 border-b border-amber-200">Label</th>
+											</tr>
+										</thead>
+										<tbody>
+											{[...myMonthlyData.holidays].sort((a,b)=> new Date(a.date) - new Date(b.date)).map(h => (
+												<tr key={h.date+String(h.label||'')}>
+													<td className="p-2 border-t border-amber-100">{new Date(h.date).toLocaleDateString()}</td>
+													<td className="p-2 border-t border-amber-100">{h.label || '-'}</td>
+												</tr>
+											))}
+										</tbody>
+									</table>
+								) : (
+									<div className="text-sm opacity-70">No holidays this month.</div>
+								)}
+							</div>
+						</div>
+					)}
+				</div>
+			</div>
+		);
 	}
 
 	const employeePicker = (

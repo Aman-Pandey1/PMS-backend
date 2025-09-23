@@ -24,3 +24,8 @@ export async function myLeaveBalance(year, month) {
     const { data } = await api.get(`/payroll/me/leave-balance?year=${year}&month=${month}`);
     return data;
 }
+
+export async function myMonthly(year, month) {
+	const { data } = await api.get(`/payroll/me/monthly?year=${year}&month=${month}`);
+	return data;
+}
