@@ -28,6 +28,12 @@ export default function PayrollPage() {
 	const [myMonthlyData, setMyMonthlyData] = useState(null);
 	const [myYear, setMyYear] = useState(new Date().getFullYear());
 	const [myMonth, setMyMonth] = useState(new Date().getMonth()+1);
+	// Company admin slip modal
+	const [slipOpen, setSlipOpen] = useState(false);
+	const [slipLoading, setSlipLoading] = useState(false);
+	const [slipErr, setSlipErr] = useState('');
+	const [slipData, setSlipData] = useState(null);
+	const [slipUserName, setSlipUserName] = useState('');
 
 	useEffect(() => {
 		(async () => {
@@ -108,6 +114,16 @@ export default function PayrollPage() {
 			const { computeMonthly } = await import('../services/payroll.js');
 			setMonthly(await computeMonthly(selectedEmployee, year, month));
 		} catch (e) { setErrMsg(e?.response?.data?.error || 'Failed to compute'); }
+	}
+
+	async function openSlip(userId, displayName, y, m) {
+		setSlipErr(''); setSlipData(null); setSlipOpen(true); setSlipLoading(true); setSlipUserName(displayName || userId);
+		try {
+			const { computeMonthly } = await import('../services/payroll.js');
+			const data = await computeMonthly(userId, y, m);
+			setSlipData(data);
+		} catch (e) { setSlipErr(e?.response?.data?.error || 'Failed to load slip'); }
+		finally { setSlipLoading(false); }
 	}
 
 	function formatCurrency(value) {
@@ -375,45 +391,46 @@ export default function PayrollPage() {
 									<th className="text-left p-2 border-b border-amber-200">Actions</th>
 								</tr>
 							</thead>
-							<tbody>
-								{empLoading ? (
-									<tr><td className="p-2" colSpan={8}>Loading...</td></tr>
-								) : (
-									empRows.map((r, idx) => (
-										<tr key={r.id}>
-											<td className="p-2 border-t border-amber-100">{r.name}</td>
-											<td className="p-2 border-t border-amber-100"><input className="border border-amber-300 rounded px-2 py-1 w-40" value={r.designation} onChange={(e)=>setEmpRows(rows=>rows.map((x,i)=>i===idx?{...x, designation:e.target.value}:x))} /></td>
-											<td className="p-2 border-t border-amber-100"><input type="number" className="border border-amber-300 rounded px-2 py-1 w-32" value={r.baseSalary} onChange={(e)=>setEmpRows(rows=>rows.map((x,i)=>i===idx?{...x, baseSalary:Number(e.target.value)||0}:x))} /></td>
-											<td className="p-2 border-t border-amber-100"><input type="number" className="border border-amber-300 rounded px-2 py-1 w-28" value={r.paidLeavePerMonth} onChange={(e)=>setEmpRows(rows=>rows.map((x,i)=>i===idx?{...x, paidLeavePerMonth:Number(e.target.value)||0}:x))} /></td>
-											{['emergency','sick','vacation'].map((t,j)=>(
-												<td key={t} className="p-2 border-t border-amber-100"><input type="number" className="border border-amber-300 rounded px-2 py-1 w-24" value={(r.paidLeaveTypes.find(x=>x.type===t)?.days) ?? 0} onChange={(e)=>{
-													const val = Number(e.target.value)||0;
-													setEmpRows(rows=>rows.map((x,i)=>{
-														if (i!==idx) return x;
-														const arr = Array.isArray(x.paidLeaveTypes)?[...x.paidLeaveTypes]:[];
-														const k = arr.findIndex(y=>y.type===t);
-														if (k>=0) arr[k] = { ...arr[k], days: val };
-														else arr.push({ type: t, days: val });
-														return { ...x, paidLeaveTypes: arr };
-													}));
-												}} /></td>
-											))}
-											<td className="p-2 border-t border-amber-100">{typeof r.deduction==='number'? r.deduction.toFixed(2) : '-'}</td>
-											<td className="p-2 border-t border-amber-100">{typeof r.payable==='number'? r.payable.toFixed(2) : '-'}</td>
-											<td className="p-2 border-t border-amber-100">
-												<button onClick={async()=>{
-													setErrMsg(''); setMsg('');
-													try {
-														const { setUserSalary } = await import('../services/payroll.js');
-														await setUserSalary(r.id, { designation: r.designation || 'Employee', baseSalary: Number(r.baseSalary)||0, paidLeavePerMonth: Number(r.paidLeavePerMonth)||0, paidLeaveTypes: r.paidLeaveTypes, effectiveFrom: new Date().toISOString() });
-														setMsg('Saved');
-													} catch (e) { setErrMsg(e?.response?.data?.error || 'Failed to save'); }
-												}} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-1">Save</button>
-											</td>
-										</tr>
-									))
-								)}
-							</tbody>
+					<tbody>
+						{empLoading ? (
+							<tr><td className="p-2" colSpan={8}>Loading...</td></tr>
+						) : (
+							empRows.map((r, idx) => (
+								<tr key={r.id}>
+									<td className="p-2 border-t border-amber-100">{r.name}</td>
+									<td className="p-2 border-t border-amber-100"><input className="border border-amber-300 rounded px-2 py-1 w-40" value={r.designation} onChange={(e)=>setEmpRows(rows=>rows.map((x,i)=>i===idx?{...x, designation:e.target.value}:x))} /></td>
+									<td className="p-2 border-t border-amber-100"><input type="number" className="border border-amber-300 rounded px-2 py-1 w-32" value={r.baseSalary} onChange={(e)=>setEmpRows(rows=>rows.map((x,i)=>i===idx?{...x, baseSalary:Number(e.target.value)||0}:x))} /></td>
+									<td className="p-2 border-t border-amber-100"><input type="number" className="border border-amber-300 rounded px-2 py-1 w-28" value={r.paidLeavePerMonth} onChange={(e)=>setEmpRows(rows=>rows.map((x,i)=>i===idx?{...x, paidLeavePerMonth:Number(e.target.value)||0}:x))} /></td>
+									{['emergency','sick','vacation'].map((t,j)=>(
+										<td key={t} className="p-2 border-t border-amber-100"><input type="number" className="border border-amber-300 rounded px-2 py-1 w-24" value={(r.paidLeaveTypes.find(x=>x.type===t)?.days) ?? 0} onChange={(e)=>{
+											const val = Number(e.target.value)||0;
+											setEmpRows(rows=>rows.map((x,i)=>{
+												if (i!==idx) return x;
+												const arr = Array.isArray(x.paidLeaveTypes)?[...x.paidLeaveTypes]:[];
+												const k = arr.findIndex(y=>y.type===t);
+												if (k>=0) arr[k] = { ...arr[k], days: val };
+												else arr.push({ type: t, days: val });
+												return { ...x, paidLeaveTypes: arr };
+											}));
+										}} /></td>
+									))}
+									<td className="p-2 border-t border-amber-100">{typeof r.deduction==='number'? r.deduction.toFixed(2) : '-'}</td>
+									<td className="p-2 border-t border-amber-100">{typeof r.payable==='number'? r.payable.toFixed(2) : '-'}</td>
+									<td className="p-2 border-t border-amber-100 space-x-2">
+										<button onClick={async()=>{
+											setErrMsg(''); setMsg('');
+											try {
+												const { setUserSalary } = await import('../services/payroll.js');
+												await setUserSalary(r.id, { designation: r.designation || 'Employee', baseSalary: Number(r.baseSalary)||0, paidLeavePerMonth: Number(r.paidLeavePerMonth)||0, paidLeaveTypes: r.paidLeaveTypes, effectiveFrom: new Date().toISOString() });
+												setMsg('Saved');
+											} catch (e) { setErrMsg(e?.response?.data?.error || 'Failed to save'); }
+										}} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-1">Save</button>
+										<button onClick={()=>openSlip(r.id, r.name, year, month)} className="border border-amber-300 text-amber-900 rounded px-3 py-1">Slip</button>
+									</td>
+								</tr>
+							))
+						)}
+					</tbody>
 						</table>
 					</div>
 				</div>
@@ -533,7 +550,7 @@ export default function PayrollPage() {
 						}} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-1">Compute Overview</button>
 					</div>
 					<div className="overflow-x-auto">
-						<table className="min-w-[900px] w-full">
+						<table className="min-w-[1000px] w-full">
 							<thead>
 								<tr className="bg-amber-50 text-amber-900">
 									<th className="text-left p-2 border-b border-amber-200">Employee</th>
@@ -545,6 +562,7 @@ export default function PayrollPage() {
 									<th className="text-left p-2 border-b border-amber-200">Deduction</th>
 									<th className="text-left p-2 border-b border-amber-200">Payable</th>
 									<th className="text-left p-2 border-b border-amber-200">Status</th>
+									<th className="text-left p-2 border-b border-amber-200">Actions</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -562,6 +580,7 @@ export default function PayrollPage() {
 											<td className="p-2 border-t border-amber-100">{typeof r.deduction === 'number' ? r.deduction.toFixed(2) : '-'}</td>
 											<td className="p-2 border-t border-amber-100">{typeof r.payable === 'number' ? r.payable.toFixed(2) : '-'}</td>
 											<td className="p-2 border-t border-amber-100">{r.error ? r.error : 'OK'}</td>
+											<td className="p-2 border-t border-amber-100"><button onClick={()=>openSlip(r.id, r.name, year, month)} className="border border-amber-300 text-amber-900 rounded px-3 py-1">Slip</button></td>
 										</tr>
 									))
 								)}
