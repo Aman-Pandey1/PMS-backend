@@ -17,6 +17,7 @@ import AttendanceCompany from './pages/AttendanceCompany.jsx';
 import HomePage from './pages/HomePage.jsx';
 import AboutPage from './pages/AboutPage.jsx';
 import ShopPage from './pages/ShopPage.jsx';
+import PayrollPage from './pages/PayrollPage.jsx';
 
 export default function App() {
 	return (
