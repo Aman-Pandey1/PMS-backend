@@ -1,4 +1,5 @@
 import React from 'react';
+import Footer from '../components/Footer.jsx';
 
 export default function AboutPage() {
   return (
@@ -15,6 +16,7 @@ export default function AboutPage() {
           <p className="text-amber-800 mt-2">We prioritize ethical sourcing and eco-friendly packaging.</p>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }
