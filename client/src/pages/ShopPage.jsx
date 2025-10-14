@@ -7,24 +7,26 @@ export default function ShopPage() {
   const [active, setActive] = useState(categories[0]?.id || '');
   const filtered = useMemo(() => products.filter(p => !active || p.categoryId === active), [active]);
   return (
-    <div className="grid md:grid-cols-[1fr_320px] gap-6">
-      <div>
-        <div className="flex gap-2 flex-wrap mb-4">
-          {categories.map(c => (
-            <button key={c.id} onClick={() => setActive(c.id)} className={`px-4 py-2 rounded-full border ${active === c.id ? 'bg-amber-700 text-white border-amber-700' : 'bg-white text-amber-900 border-amber-300 hover:bg-amber-50'}`}>{c.name}</button>
-          ))}
+    <>
+      <div className="grid md:grid-cols-[1fr_320px] gap-6">
+        <div>
+          <div className="flex gap-2 flex-wrap mb-4">
+            {categories.map(c => (
+              <button key={c.id} onClick={() => setActive(c.id)} className={`px-4 py-2 rounded-full border ${active === c.id ? 'bg-amber-700 text-white border-amber-700' : 'bg-white text-amber-900 border-amber-300 hover:bg-amber-50'}`}>{c.name}</button>
+            ))}
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filtered.map(p => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
         </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map(p => (
-            <ProductCard key={p.id} product={p} />
-          ))}
-        </div>
+        <aside>
+          <CartPanel />
+        </aside>
       </div>
-      <aside>
-        <CartPanel />
-      </aside>
-    </div>
-    <Footer />
+      <Footer />
+    </>
   );
 }
 
