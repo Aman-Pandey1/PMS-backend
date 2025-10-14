@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import clsx from 'clsx';
+import { BRAND } from '../branding.js';
 
 export default function DashboardLayout() {
 	const { user, logout } = useAuth();
@@ -45,7 +46,7 @@ export default function DashboardLayout() {
 						}
 						if (newestTs > lastTs) localStorage.setItem(lastKey, String(newestTs));
 						// Title badge
-						document.title = pending.length ? `(${pending.length}) EMS` : 'EMS';
+                        document.title = pending.length ? `(${pending.length}) ${BRAND.shortName}` : BRAND.shortName;
 						// Favicon badge + App icon badge
 						try {
 							// App icon badge (installed/ supported browsers)
@@ -60,7 +61,7 @@ export default function DashboardLayout() {
 				timer = setInterval(fetchAndNotify, 30000);
 			} catch {}
 		})();
-		return () => { if (timer) clearInterval(timer); try { document.title = 'EMS'; } catch {} };
+        return () => { if (timer) clearInterval(timer); try { document.title = BRAND.shortName; } catch {} };
 	}, [user?.id, user?.role]);
 
 	// Dynamic favicon badge using canvas
@@ -73,14 +74,14 @@ export default function DashboardLayout() {
 				const canvas = document.createElement('canvas');
 				canvas.width = size; canvas.height = size;
 				const ctx = canvas.getContext('2d');
-				// Base circle
-				ctx.fillStyle = '#8b5cf6';
+                // Base circle in brand accent
+                ctx.fillStyle = '#C89A6A';
 				ctx.beginPath(); ctx.arc(size/2, size/2, size/2, 0, Math.PI*2); ctx.fill();
-				// Letter E
-				ctx.fillStyle = '#ffffff';
-				ctx.font = 'bold 34px sans-serif';
+                // Letter K
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 34px sans-serif';
 				ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-				ctx.fillText('E', size/2 - (count ? 8 : 0), size/2);
+                ctx.fillText('K', size/2 - (count ? 8 : 0), size/2);
 				if (count) {
 					const badge = Math.min(99, count);
 					ctx.fillStyle = '#ef4444';
@@ -94,7 +95,7 @@ export default function DashboardLayout() {
 				document.head.appendChild(link);
 			} catch {}
 		}
-		try { document.title = unread.length ? `(${unread.length}) EMS` : 'EMS'; } catch {}
+        try { document.title = unread.length ? `(${unread.length}) ${BRAND.shortName}` : BRAND.shortName; } catch {}
 		try { if (navigator.setAppBadge) { if (unread.length) navigator.setAppBadge(unread.length); else navigator.clearAppBadge(); } } catch {}
 		updateFavicon(unread.length || 0);
 	}, [unread.length]);
@@ -124,9 +125,12 @@ export default function DashboardLayout() {
 	}
 
 	return (
-		<div className="min-h-screen grid grid-cols-[260px_1fr] bg-zinc-50">
-			<aside className="bg-amber-700 text-white p-4">
-				<div className="font-bold mb-6 text-2xl tracking-wide">EMS</div>
+        <div className="min-h-screen grid grid-cols-[260px_1fr] bg-zinc-50">
+            <aside className="bg-amber-700 text-white p-4">
+                <div className="flex items-center gap-3 mb-6">
+                    <img src={BRAND.logoUrl} alt="Logo" className="h-8 w-auto rounded-sm"/>
+                    <div className="font-bold text-xl tracking-wide">{BRAND.shortName}</div>
+                </div>
 				<nav className="flex flex-col gap-1">
 					<Section title="General" />
 					<SidebarLink to="/" label="Dashboard" />
@@ -204,16 +208,16 @@ export default function DashboardLayout() {
 }
 
 function Section({ title }) {
-	return <div className="uppercase text-xs tracking-widest opacity-80 mt-4 mb-1">{title}</div>;
+    return <div className="uppercase text-xs tracking-widest opacity-80 mt-4 mb-1">{title}</div>;
 }
 
 function SidebarLink({ to, label }) {
 	return (
 		<NavLink
-			className={({ isActive }) => clsx(
-				'rounded px-3 py-2 hover:bg-amber-800/60 transition-colors',
-				isActive && 'bg-amber-900/60'
-			)}
+            className={({ isActive }) => clsx(
+                'rounded px-3 py-2 hover:bg-amber-800/60 transition-colors',
+                isActive && 'bg-amber-900/60'
+            )}
 			to={to}
 		>
 			{label}
