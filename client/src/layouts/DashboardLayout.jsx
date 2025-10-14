@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import clsx from 'clsx';
 import { BRAND } from '../branding.js';
+import Footer from '../components/Footer.jsx';
 
 export default function DashboardLayout() {
 	const { user, logout } = useAuth();
@@ -169,9 +170,12 @@ export default function DashboardLayout() {
 					<button onClick={logout} className="mt-2 text-sm underline">Logout</button>
 				</div>
 			</aside>
-			<main className="p-6">
-				<Outlet />
-			</main>
+            <main className="p-6">
+                <Outlet />
+                <div className="mt-10">
+                    <Footer />
+                </div>
+            </main>
 
 			{showPopup && unread.length > 0 && (
 				<div className="fixed inset-0 bg-black/40 grid place-items-center p-4 z-50">

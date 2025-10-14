@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { categories, products } from '../lib/products.js';
 import { useCart } from '../contexts/CartContext.jsx';
+import Footer from '../components/Footer.jsx';
 
 export default function ShopPage() {
   const [active, setActive] = useState(categories[0]?.id || '');
@@ -23,6 +24,7 @@ export default function ShopPage() {
         <CartPanel />
       </aside>
     </div>
+    <Footer />
   );
 }
 

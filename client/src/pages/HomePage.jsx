@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import Footer from '../components/Footer.jsx';
 
 export default function HomePage() {
   const [visible, setVisible] = useState(false);
@@ -24,6 +25,7 @@ export default function HomePage() {
         <FeatureCard title="Fast Delivery" body="From our roastery to your door in days." delay={100} />
         <FeatureCard title="Secure Checkout" body="Trusted payments and safe packaging." delay={200} />
       </section>
+      <Footer />
     </div>
   );
 }
