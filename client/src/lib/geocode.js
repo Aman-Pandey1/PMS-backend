@@ -5,7 +5,7 @@ export async function reverseGeocode(lat, lon) {
 	if (geocodeCache.has(key)) return geocodeCache.get(key);
 	try {
 		const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=10&addressdetails=1`;
-		const res = await fetch(url, { headers: { 'Accept': 'application/json', 'User-Agent': 'EMS/1.0 (reverse-geocode)' } });
+    const res = await fetch(url, { headers: { 'Accept': 'application/json', 'User-Agent': 'KKD-PMS/1.0 (reverse-geocode)' } });
 		if (!res.ok) throw new Error('geocode failed');
 		const data = await res.json();
 		const addr = data.address || {};
