@@ -102,11 +102,15 @@ export async function computeMyMonthlySalary(req, res) {
 export async function setUserSalary(req, res) {
 	const { id } = req.params;
 	const { designation, baseSalary, securityAmount, effectiveFrom, paidLeavePerMonth, paidLeaveTypes } = req.body || {};
+	const mongoose = await import('mongoose');
+	if (!id || !mongoose.default.Types.ObjectId.isValid(id)) {
+		return res.status(400).json({ error: 'Invalid user ID' });
+	}
 	const { User } = await import('../models/User.js');
 	const u = await User.findById(id).lean();
 	if (!u) return res.status(404).json({ error: 'User not found' });
 	if (req.user.role === 'COMPANY_ADMIN' && String(u.companyId) !== String(req.user.companyId)) return res.status(403).json({ error: 'Forbidden' });
-	const item = await Salary.create({ userId: id, companyId: u.companyId, designation, baseSalary, securityAmount, effectiveFrom, paidLeavePerMonth, paidLeaveTypes });
+	const item = await Salary.create({ userId: new mongoose.default.Types.ObjectId(id), companyId: u.companyId, designation, baseSalary, securityAmount, effectiveFrom, paidLeavePerMonth, paidLeaveTypes });
 	res.status(201).json(item);
 }
 

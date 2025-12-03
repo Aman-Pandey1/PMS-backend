@@ -42,17 +42,23 @@ export default function TasksPage() {
 			setLoading(true);
 			try {
 				const svc = await import('../services/tasks.js');
-				const calls = [svc.tasksAssignedToMe(), svc.tasksCreatedByMe()];
-				// Preload company-wide tasks for supervisors/admins
+				const calls = [svc.tasksAssignedToMe()];
+				// Only load created tasks for non-employees
 				if (user?.role && user.role !== 'EMPLOYEE') {
+					calls.push(svc.tasksCreatedByMe());
 					const params = {};
 					// SUPER_ADMIN must select a company to view; defer initial load
 					if (user.role !== 'SUPER_ADMIN') calls.push(svc.filterTasks(params));
 				}
 				const results = await Promise.all(calls);
 				setTasksAssigned(results[0] || []);
-				setTasksCreated(results[1] || []);
-				if (results[2]) setCompanyTasks(results[2]);
+				if (user?.role && user.role !== 'EMPLOYEE') {
+					setTasksCreated(results[1] || []);
+					if (results[2]) setCompanyTasks(results[2]);
+				} else {
+					setTasksCreated([]);
+					setCompanyTasks([]);
+				}
 				try {
 					if (user?.role !== 'EMPLOYEE') {
 						const { listUsers } = await import('../services/users.js');
@@ -97,10 +103,14 @@ export default function TasksPage() {
 	}
 
 	const currentTasks = useMemo(() => {
+		// Employees can only see assigned tasks
+		if (user?.role === 'EMPLOYEE' && tab !== 'assigned') {
+			return tasksAssigned.filter(t => filterStatus ? t.status === filterStatus : true);
+		}
 		let base = tab === 'assigned' ? tasksAssigned : tab === 'created' ? tasksCreated : companyTasks;
 		if (filterStatus) base = base.filter(t => t.status === filterStatus);
 		return base;
-	}, [tab, tasksAssigned, tasksCreated, companyTasks, filterStatus]);
+	}, [tab, tasksAssigned, tasksCreated, companyTasks, filterStatus, user?.role]);
 
     const totalPages = Math.max(1, Math.ceil(currentTasks.length / pageSize));
     const paged = currentTasks.slice((page-1)*pageSize, (page-1)*pageSize + pageSize);
@@ -214,27 +224,27 @@ export default function TasksPage() {
 			{msg && <div className="text-green-800 bg-green-50 border border-green-200 rounded p-2">{msg}</div>}
 			{errMsg && <div className="text-red-800 bg-red-50 border border-red-200 rounded p-2">{errMsg}</div>}
 
-			{/* Create (only supervisors) */}
-			{user?.role === 'SUPERVISOR' && (
+			{/* Create (supervisors and company admins) */}
+			{(user?.role === 'SUPERVISOR' || user?.role === 'COMPANY_ADMIN') && (
 				<div className="bg-white border border-amber-300 rounded p-4">
 					<div className="text-amber-900 font-medium mb-3">Create Task</div>
 					<form onSubmit={createTask} className="grid md:grid-cols-4 gap-3">
 						<div className="md:col-span-2">
 							<label className="block text-sm mb-1 text-amber-900">Employee</label>
-							<select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} className={"w-full border rounded px-3 py-2 " + (errors.assigneeId ? 'border-red-500' : 'border-amber-300')}>
+							<select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} className={"w-full border rounded px-3 py-2 text-amber-900 " + (errors.assigneeId ? 'border-red-500' : 'border-amber-300')}>
 								<option value="">Select employee</option>
-								{subordinates.filter(s => s.role === 'EMPLOYEE').map((s) => <option key={s.id} value={s.id}>{s.fullName} ({s.email})</option>)}
+								{(user?.role === 'COMPANY_ADMIN' ? subordinates : subordinates.filter(s => s.role === 'EMPLOYEE')).map((s) => <option key={s.id} value={s.id}>{s.fullName} ({s.email})</option>)}
 							</select>
 							{errors.assigneeId && <div className="text-xs text-red-600 mt-1">{errors.assigneeId}</div>}
 						</div>
 						<div>
 							<label className="block text-sm mb-1 text-amber-900">Project</label>
-							<input value={projectName} onChange={(e) => setProjectName(e.target.value)} className={"w-full border rounded px-3 py-2 " + (errors.projectName ? 'border-red-500' : 'border-amber-300')} placeholder="Project name" />
+							<input value={projectName} onChange={(e) => setProjectName(e.target.value)} className={"w-full border rounded px-3 py-2 text-amber-900 " + (errors.projectName ? 'border-red-500' : 'border-amber-300')} placeholder="Project name" />
 							{errors.projectName && <div className="text-xs text-red-600 mt-1">{errors.projectName}</div>}
 						</div>
 						<div>
 							<label className="block text-sm mb-1 text-amber-900">Priority</label>
-							<select value={priority} onChange={(e) => setPriority(e.target.value)} className="w-full border border-amber-300 rounded px-3 py-2">
+							<select value={priority} onChange={(e) => setPriority(e.target.value)} className="w-full border border-amber-300 rounded px-3 py-2 text-amber-900">
 								<option value="LOW">LOW</option>
 								<option value="MEDIUM">MEDIUM</option>
 								<option value="HIGH">HIGH</option>
@@ -243,22 +253,22 @@ export default function TasksPage() {
 						</div>
 						<div>
 							<label className="block text-sm mb-1 text-amber-900">Start Date</label>
-							<input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={"w-full border rounded px-3 py-2 " + (errors.startDate ? 'border-red-500' : 'border-amber-300')} />
+							<input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={"w-full border rounded px-3 py-2 text-amber-900 " + (errors.startDate ? 'border-red-500' : 'border-amber-300')} />
 							{errors.startDate && <div className="text-xs text-red-600 mt-1">{errors.startDate}</div>}
 						</div>
 						<div>
 							<label className="block text-sm mb-1 text-amber-900">Deadline</label>
-							<input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className={"w-full border rounded px-3 py-2 " + (errors.deadline ? 'border-red-500' : 'border-amber-300')} />
+							<input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className={"w-full border rounded px-3 py-2 text-amber-900 " + (errors.deadline ? 'border-red-500' : 'border-amber-300')} />
 							{errors.deadline && <div className="text-xs text-red-600 mt-1">{errors.deadline}</div>}
 						</div>
 						<div className="md:col-span-2">
 							<label className="block text-sm mb-1 text-amber-900">Description</label>
-							<textarea value={description} onChange={(e) => setDescription(e.target.value)} className={"w-full border rounded px-3 py-2 " + (errors.description ? 'border-red-500' : 'border-amber-300')} rows={2} />
+							<textarea value={description} onChange={(e) => setDescription(e.target.value)} className={"w-full border rounded px-3 py-2 text-amber-900 " + (errors.description ? 'border-red-500' : 'border-amber-300')} rows={2} />
 							{errors.description && <div className="text-xs text-red-600 mt-1">{errors.description}</div>}
 						</div>
 						<div className="md:col-span-2">
 							<label className="block text-sm mb-1 text-amber-900">Remarks</label>
-							<textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} className="w-full border border-amber-300 rounded px-3 py-2" rows={2} />
+							<textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} className="w-full border border-amber-300 rounded px-3 py-2 text-amber-900" rows={2} />
 						</div>
 						<div className="md:col-span-4 flex justify-end">
 							<button className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">Create</button>
@@ -297,7 +307,9 @@ export default function TasksPage() {
 					</>
 				)}
 				<button onClick={()=>{ setTab('assigned'); setPage(1); }} className={(tab==='assigned'?'bg-amber-700 text-white':'bg-white text-amber-900') + ' border border-amber-300 rounded px-3 py-2'}>Assigned</button>
-				<button onClick={()=>{ setTab('created'); setPage(1); }} className={(tab==='created'?'bg-amber-700 text-white':'bg-white text-amber-900') + ' border border-amber-300 rounded px-3 py-2'}>Created</button>
+				{user?.role !== 'EMPLOYEE' && (
+					<button onClick={()=>{ setTab('created'); setPage(1); }} className={(tab==='created'?'bg-amber-700 text-white':'bg-white text-amber-900') + ' border border-amber-300 rounded px-3 py-2'}>Created</button>
+				)}
 			</div>
 
 			{/* Table */}

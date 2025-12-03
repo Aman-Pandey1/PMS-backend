@@ -48,7 +48,7 @@ export default function LoginPage() {
                     </div>
                     <div>
                         <label className="block text-sm mb-1 text-amber-900">Password</label>
-                        <input className="w-full border border-amber-300 rounded px-3 py-2" placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                        <input className="w-full border border-amber-300 rounded px-3 py-2" placeholder="Password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
                     </div>
                     <button disabled={loading} className="w-full bg-amber-700 hover:bg-amber-800 disabled:opacity-60 text-white rounded px-3 py-2">{loading ? 'Signing in...' : 'Continue'}</button>
                     <div className="text-xs opacity-70">Tip: First login can bootstrap a Super Admin if no users exist.</div>

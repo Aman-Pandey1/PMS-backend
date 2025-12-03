@@ -8,6 +8,7 @@ const userSchema = new Schema({
 	fullName: { type: String, required: true },
 	companyId: { type: Schema.Types.ObjectId, ref: 'Company', index: true },
 	role: { type: String, enum: ['SUPER_ADMIN', 'COMPANY_ADMIN', 'SUPERVISOR', 'HR', 'EMPLOYEE'], required: true },
+	jobPosition: { type: String, default: '' },
 	managerId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
 	ancestors: { type: [Schema.Types.ObjectId], index: true, default: [] },
 	depth: { type: Number, default: 0 },

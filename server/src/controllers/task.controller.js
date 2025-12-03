@@ -12,9 +12,12 @@ export async function createTask(req, res) {
 		}
 	}
 	const item = await Task.create({ companyId: req.user.companyId, creatorId: req.user.uid, assigneeId, projectName, description, startDate, deadline, priority, remarks, status: 'OPEN', updates: [], watchers: [] });
-	// notify assignee
+	// notify assignee and creator
 	try {
-		await Notification.create({ userId: assigneeId, type: 'TASK_ASSIGNED', title: 'New task assigned', body: projectName || description?.slice(0,100) || 'Task assigned', data: { taskId: item._id } });
+		await Promise.all([
+			Notification.create({ userId: assigneeId, type: 'TASK_ASSIGNED', title: 'New task assigned', body: projectName || description?.slice(0,100) || 'Task assigned', data: { taskId: item._id } }),
+			Notification.create({ userId: req.user.uid, type: 'TASK_CREATED', title: 'Task created', body: projectName || description?.slice(0,100) || 'Task created', data: { taskId: item._id } })
+		]);
 	} catch {}
 	res.status(201).json(item);
 }

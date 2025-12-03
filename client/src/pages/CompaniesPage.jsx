@@ -106,7 +106,7 @@ export default function CompaniesPage() {
 					</div>
 					<div>
 						<label className="block text-sm mb-1 text-amber-900">Admin Password</label>
-						<input type="password" className={"w-full border rounded px-3 py-2 " + (formErrors.adminPassword ? 'border-red-500' : 'border-amber-300')} placeholder="Password" value={adminPassword} onChange={(e)=>setAdminPassword(e.target.value)} />
+						<input type="password" className={"w-full border rounded px-3 py-2 " + (formErrors.adminPassword ? 'border-red-500' : 'border-amber-300')} placeholder="Password" autoComplete="new-password" value={adminPassword} onChange={(e)=>setAdminPassword(e.target.value)} />
 						{formErrors.adminPassword && <div className="text-xs text-red-600 mt-1">{formErrors.adminPassword}</div>}
 					</div>
 					<div>

@@ -60,7 +60,16 @@ export default function SettingsPage() {
 			<h1 className="text-xl font-semibold">Settings</h1>
 			{msg && <div className="text-green-800 bg-green-50 border border-green-200 rounded p-2">{msg}</div>}
 			{errMsg && <div className="text-red-800 bg-red-50 border border-red-200 rounded p-2">{errMsg}</div>}
-			<div className="bg-white border border-amber-300 rounded p-4 grid md:grid-cols-3 gap-3">
+			<form onSubmit={async(e)=>{
+				e.preventDefault();
+				setMsg(''); setErrMsg('');
+				try {
+					const { updateMe } = await import('../services/auth.js');
+					await updateMe({ email: profileEmail, fullName: profileName, ...(profilePassword ? { password: profilePassword } : {}) });
+					setProfilePassword('');
+					setMsg('Profile updated');
+				} catch (e) { setErrMsg(e?.response?.data?.error || 'Failed to update profile'); }
+			}} className="bg-white border border-amber-300 rounded p-4 grid md:grid-cols-3 gap-3">
 				<div className="md:col-span-3 text-amber-900 font-medium">My Profile</div>
 				<div>
 					<label className="block text-sm mb-1 text-amber-900">Full Name</label>
@@ -72,20 +81,12 @@ export default function SettingsPage() {
 				</div>
 				<div>
 					<label className="block text-sm mb-1 text-amber-900">New Password</label>
-					<input type="password" className="w-full border border-amber-300 rounded px-3 py-2" value={profilePassword} onChange={(e)=>setProfilePassword(e.target.value)} placeholder="Leave blank to keep same" />
+					<input type="password" className="w-full border border-amber-300 rounded px-3 py-2" autoComplete="new-password" value={profilePassword} onChange={(e)=>setProfilePassword(e.target.value)} placeholder="Leave blank to keep same" />
 				</div>
 				<div className="md:col-span-3 flex justify-end">
-					<button onClick={async()=>{
-						setMsg(''); setErrMsg('');
-						try {
-							const { updateMe } = await import('../services/auth.js');
-							await updateMe({ email: profileEmail, fullName: profileName, ...(profilePassword ? { password: profilePassword } : {}) });
-							setProfilePassword('');
-							setMsg('Profile updated');
-						} catch (e) { setErrMsg(e?.response?.data?.error || 'Failed to update profile'); }
-					}} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">Save Profile</button>
+					<button type="submit" className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">Save Profile</button>
 				</div>
-			</div>
+			</form>
 			{user?.role === 'COMPANY_ADMIN' ? (
 				<div className="bg-white border border-amber-300 rounded p-4 grid md:grid-cols-3 gap-3">
 					<div className="md:col-span-3 text-amber-900 font-medium">Company Location Settings</div>

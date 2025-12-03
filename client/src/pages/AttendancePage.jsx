@@ -12,6 +12,7 @@ export default function AttendancePage() {
 	const [errMsg, setErrMsg] = useState('');
     const [page, setPage] = useState(1);
     const pageSize = 10;
+	const [cities, setCities] = useState({});
 	const timerRef = useRef(null);
 	const startRef = useRef(null);
 
@@ -31,6 +32,32 @@ export default function AttendancePage() {
 		})();
 		return () => stopTimer();
 	}, []);
+
+	// Load location names for attendance records
+	useEffect(() => {
+		(async () => {
+			const map = {};
+			for (const r of recent) {
+				const inC = r.checkInLocation?.coordinates;
+				if (inC) {
+					const [lon, lat] = inC;
+					const key = `${lat.toFixed(4)},${lon.toFixed(4)}`;
+					if (!map[key]) {
+						map[key] = await reverseGeocode(lat, lon).catch(() => '');
+					}
+				}
+				const outC = r.checkOutLocation?.coordinates;
+				if (outC) {
+					const [lon, lat] = outC;
+					const key = `${lat.toFixed(4)},${lon.toFixed(4)}`;
+					if (!map[key]) {
+						map[key] = await reverseGeocode(lat, lon).catch(() => '');
+					}
+				}
+			}
+			setCities(map);
+		})();
+	}, [recent]);
 
 	function startTimer() {
 		stopTimer();
@@ -110,24 +137,42 @@ export default function AttendancePage() {
 
 			<div className="bg-white border border-amber-300 rounded p-4 overflow-x-auto">
 				<div className="text-amber-900 font-medium mb-3">Recent</div>
-				<table className="min-w-[700px] w-full">
+				<table className="min-w-[900px] w-full">
 					<thead>
 						<tr className="bg-amber-50 text-amber-900">
 							<th className="text-left p-2 border-b border-amber-200">Date</th>
 							<th className="text-left p-2 border-b border-amber-200">Check-in</th>
 							<th className="text-left p-2 border-b border-amber-200">Check-out</th>
+							<th className="text-left p-2 border-b border-amber-200">Check-in Location</th>
+							<th className="text-left p-2 border-b border-amber-200">Check-out Location</th>
 							<th className="text-left p-2 border-b border-amber-200">Report</th>
 						</tr>
 					</thead>
 					<tbody>
-						{paged.map((r) => (
-							<tr key={r._id}>
-								<td className="p-2 border-t border-amber-100">{r.date}</td>
-								<td className="p-2 border-t border-amber-100">{r.checkInAt ? new Date(r.checkInAt).toLocaleTimeString() : '-'}</td>
-								<td className="p-2 border-t border-amber-100">{r.checkOutAt ? new Date(r.checkOutAt).toLocaleTimeString() : '-'}</td>
-								<td className="p-2 border-t border-amber-100">{r.dailyReport?.text || '-'}</td>
-							</tr>
-						))}
+						{paged.map((r) => {
+							const inCoords = r.checkInLocation?.coordinates;
+							const outCoords = r.checkOutLocation?.coordinates;
+							const inKey = inCoords ? `${inCoords[1].toFixed(4)},${inCoords[0].toFixed(4)}` : null;
+							const outKey = outCoords ? `${outCoords[1].toFixed(4)},${outCoords[0].toFixed(4)}` : null;
+							return (
+								<tr key={r._id}>
+									<td className="p-2 border-t border-amber-100">{r.date}</td>
+									<td className="p-2 border-t border-amber-100">{r.checkInAt ? new Date(r.checkInAt).toLocaleTimeString() : '-'}</td>
+									<td className="p-2 border-t border-amber-100">{r.checkOutAt ? new Date(r.checkOutAt).toLocaleTimeString() : '-'}</td>
+									<td className="p-2 border-t border-amber-100">{inCoords ? (
+										<a className="text-amber-800 underline" target="_blank" rel="noreferrer" href={`https://maps.google.com/?q=${inCoords[1]},${inCoords[0]}`}>
+											{inCoords[1].toFixed(4)}, {inCoords[0].toFixed(4)}{cities[inKey] ? ` · ${cities[inKey]}` : ''}
+										</a>
+									) : '-'}</td>
+									<td className="p-2 border-t border-amber-100">{outCoords ? (
+										<a className="text-amber-800 underline" target="_blank" rel="noreferrer" href={`https://maps.google.com/?q=${outCoords[1]},${outCoords[0]}`}>
+											{outCoords[1].toFixed(4)}, {outCoords[0].toFixed(4)}{cities[outKey] ? ` · ${cities[outKey]}` : ''}
+										</a>
+									) : '-'}</td>
+									<td className="p-2 border-t border-amber-100">{r.dailyReport?.text || '-'}</td>
+								</tr>
+							);
+						})}
 					</tbody>
 				</table>
                 <div className="flex justify-between items-center mt-3">

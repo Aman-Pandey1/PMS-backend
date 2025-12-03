@@ -19,7 +19,7 @@ export async function listUsers(req, res) {
 }
 
 export async function createUser(req, res) {
-	const { email, fullName, password, role, companyId, managerId } = req.body || {};
+	const { email, fullName, password, role, companyId, managerId, jobPosition } = req.body || {};
 	if (!email || !fullName || !password || !role) return res.status(400).json({ error: 'missing fields' });
 	let targetCompanyId = companyId;
 	if (!targetCompanyId && req.user?.companyId) targetCompanyId = req.user.companyId;
@@ -42,8 +42,8 @@ export async function createUser(req, res) {
 		ancestors.push(...manager.ancestors, manager._id);
 		depth = manager.depth + 1;
 	}
-	const user = await User.create({ email, fullName, passwordHash, role, companyId: targetCompanyId, managerId, ancestors, depth });
-	res.status(201).json({ id: user.id, email: user.email, fullName: user.fullName, role: user.role, companyId: user.companyId, managerId: user.managerId });
+	const user = await User.create({ email, fullName, passwordHash, role, companyId: targetCompanyId, managerId, jobPosition: jobPosition || '', ancestors, depth });
+	res.status(201).json({ id: user.id, email: user.email, fullName: user.fullName, role: user.role, companyId: user.companyId, managerId: user.managerId, jobPosition: user.jobPosition });
 }
 
 export async function mySubordinates(req, res) {

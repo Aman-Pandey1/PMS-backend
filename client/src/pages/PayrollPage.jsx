@@ -92,12 +92,17 @@ export default function PayrollPage() {
 	async function saveSalary(e) {
 		e.preventDefault(); setMsg(''); setErrMsg('');
 		if (!selectedEmployee) { setErrMsg('Select employee'); return; }
+		const salaryValue = Number(baseSalary);
+		if (!baseSalary || isNaN(salaryValue) || salaryValue <= 0) {
+			setErrMsg('Base salary is required and must be greater than 0');
+			return;
+		}
 		try {
 			const { setUserSalary } = await import('../services/payroll.js');
 			await setUserSalary(selectedEmployee, {
 				designation,
-				baseSalary: Number(baseSalary),
-				paidLeavePerMonth: Number(paidLeave),
+				baseSalary: salaryValue,
+				paidLeavePerMonth: Number(paidLeave) || 0,
 				paidLeaveTypes: paidLeaveTypes.map(p=>({ type: p.type, days: Number(p.days)||0 })),
 				effectiveFrom: effectiveFrom || new Date().toISOString(),
 			});
@@ -139,7 +144,7 @@ export default function PayrollPage() {
 				<div className="bg-white border border-amber-300 rounded p-4 grid gap-3">
 					<div className="text-amber-900 font-medium">My Salary Slip</div>
 					<div className="flex gap-2 items-center">
-						<input type="number" className="border border-amber-300 rounded px-2 py-1 w-28" value={myYear} onChange={(e)=>setMyYear(Number(e.target.value)||new Date().getFullYear())} />
+						<input type="number" className="border border-amber-300 rounded px-2 py-1 w-28 text-amber-900" value={myYear} onChange={(e)=>setMyYear(Number(e.target.value)||new Date().getFullYear())} />
 						<select className="border border-amber-300 rounded px-2 py-1" value={myMonth} onChange={(e)=>setMyMonth(Number(e.target.value)||1)}>
 							{Array.from({length:12}).map((_,i)=>(<option key={i+1} value={i+1}>{i+1}</option>))}
 						</select>
@@ -256,21 +261,21 @@ export default function PayrollPage() {
 					<form onSubmit={saveSalary} className="grid md:grid-cols-4 gap-3">
 						<div>
 							<label className="block text-sm mb-1 text-amber-900">Designation</label>
-							<input className="w-full border border-amber-300 rounded px-3 py-2" value={designation} onChange={(e)=>setDesignation(e.target.value)} />
+							<input className="w-full border border-amber-300 rounded px-3 py-2 text-amber-900" value={designation} onChange={(e)=>setDesignation(e.target.value)} />
 						</div>
 						<div>
 							<label className="block text-sm mb-1 text-amber-900">Base Salary (per month)</label>
-							<input type="number" className="w-full border border-amber-300 rounded px-3 py-2" value={baseSalary} onChange={(e)=>setBaseSalary(e.target.value)} />
+							<input type="number" className="w-full border border-amber-300 rounded px-3 py-2 text-amber-900" value={baseSalary} onChange={(e)=>setBaseSalary(e.target.value)} />
 						</div>
 						<div>
 							<label className="block text-sm mb-1 text-amber-900">Paid Leave / Month</label>
-							<input type="number" className="w-full border border-amber-300 rounded px-3 py-2" value={paidLeave} onChange={(e)=>setPaidLeave(e.target.value)} />
+							<input type="number" className="w-full border border-amber-300 rounded px-3 py-2 text-amber-900" value={paidLeave} onChange={(e)=>setPaidLeave(e.target.value)} />
 						</div>
 						<div className="md:col-span-4 grid md:grid-cols-3 gap-3">
 							{paidLeaveTypes.map((p,idx)=>(
 								<div key={idx}>
 									<label className="block text-sm mb-1 text-amber-900">{p.type.charAt(0).toUpperCase()+p.type.slice(1)} Leave (days)</label>
-									<input type="number" className="w-full border border-amber-300 rounded px-3 py-2" value={p.days} onChange={(e)=>{
+									<input type="number" className="w-full border border-amber-300 rounded px-3 py-2 text-amber-900" value={p.days} onChange={(e)=>{
 										setPaidLeaveTypes(prev=>prev.map((x,i)=> i===idx ? { ...x, days: Number(e.target.value)||0 } : x));
 									}} />
 								</div>
@@ -278,7 +283,7 @@ export default function PayrollPage() {
 						</div>
 						<div>
 							<label className="block text-sm mb-1 text-amber-900">Effective From</label>
-							<input type="date" className="w-full border border-amber-300 rounded px-3 py-2" value={effectiveFrom} onChange={(e)=>setEffectiveFrom(e.target.value)} />
+							<input type="date" className="w-full border border-amber-300 rounded px-3 py-2 text-amber-900" value={effectiveFrom} onChange={(e)=>setEffectiveFrom(e.target.value)} />
 						</div>
 						<div className="md:col-span-4 flex justify-end">
 							<button className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">Save</button>
@@ -320,7 +325,7 @@ export default function PayrollPage() {
 								{companies.map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
 							</select>
 						)}
-						<input type="number" className="border border-amber-300 rounded px-2 py-1 w-28" value={year} onChange={(e)=>setYear(Number(e.target.value))} />
+						<input type="number" className="border border-amber-300 rounded px-2 py-1 w-28 text-amber-900" value={year} onChange={(e)=>setYear(Number(e.target.value))} />
 						<select className="border border-amber-300 rounded px-2 py-1" value={month} onChange={(e)=>setMonth(Number(e.target.value))}>
 							{Array.from({length:12}).map((_,i)=>(<option key={i+1} value={i+1}>{i+1}</option>))}
 						</select>
@@ -398,11 +403,11 @@ export default function PayrollPage() {
 							empRows.map((r, idx) => (
 								<tr key={r.id}>
 									<td className="p-2 border-t border-amber-100">{r.name}</td>
-									<td className="p-2 border-t border-amber-100"><input className="border border-amber-300 rounded px-2 py-1 w-40" value={r.designation} onChange={(e)=>setEmpRows(rows=>rows.map((x,i)=>i===idx?{...x, designation:e.target.value}:x))} /></td>
-									<td className="p-2 border-t border-amber-100"><input type="number" className="border border-amber-300 rounded px-2 py-1 w-32" value={r.baseSalary} onChange={(e)=>setEmpRows(rows=>rows.map((x,i)=>i===idx?{...x, baseSalary:Number(e.target.value)||0}:x))} /></td>
-									<td className="p-2 border-t border-amber-100"><input type="number" className="border border-amber-300 rounded px-2 py-1 w-28" value={r.paidLeavePerMonth} onChange={(e)=>setEmpRows(rows=>rows.map((x,i)=>i===idx?{...x, paidLeavePerMonth:Number(e.target.value)||0}:x))} /></td>
+									<td className="p-2 border-t border-amber-100"><input className="border border-amber-300 rounded px-2 py-1 w-40 text-amber-900" value={r.designation} onChange={(e)=>setEmpRows(rows=>rows.map((x,i)=>i===idx?{...x, designation:e.target.value}:x))} /></td>
+									<td className="p-2 border-t border-amber-100"><input type="number" className="border border-amber-300 rounded px-2 py-1 w-32 text-amber-900" value={r.baseSalary} onChange={(e)=>setEmpRows(rows=>rows.map((x,i)=>i===idx?{...x, baseSalary:Number(e.target.value)||0}:x))} /></td>
+									<td className="p-2 border-t border-amber-100"><input type="number" className="border border-amber-300 rounded px-2 py-1 w-28 text-amber-900" value={r.paidLeavePerMonth} onChange={(e)=>setEmpRows(rows=>rows.map((x,i)=>i===idx?{...x, paidLeavePerMonth:Number(e.target.value)||0}:x))} /></td>
 									{['emergency','sick','vacation'].map((t,j)=>(
-										<td key={t} className="p-2 border-t border-amber-100"><input type="number" className="border border-amber-300 rounded px-2 py-1 w-24" value={(r.paidLeaveTypes.find(x=>x.type===t)?.days) ?? 0} onChange={(e)=>{
+										<td key={t} className="p-2 border-t border-amber-100"><input type="number" className="border border-amber-300 rounded px-2 py-1 w-24 text-amber-900" value={(r.paidLeaveTypes.find(x=>x.type===t)?.days) ?? 0} onChange={(e)=>{
 											const val = Number(e.target.value)||0;
 											setEmpRows(rows=>rows.map((x,i)=>{
 												if (i!==idx) return x;
@@ -441,7 +446,7 @@ export default function PayrollPage() {
 					<div className="text-amber-900 font-medium">Monthly Salary</div>
 					{employeePicker}
 					<div className="flex gap-2 items-center">
-						<input type="number" className="border border-amber-300 rounded px-2 py-1 w-28" value={year} onChange={(e)=>setYear(Number(e.target.value))} />
+						<input type="number" className="border border-amber-300 rounded px-2 py-1 w-28 text-amber-900" value={year} onChange={(e)=>setYear(Number(e.target.value))} />
 						<select className="border border-amber-300 rounded px-2 py-1" value={month} onChange={(e)=>setMonth(Number(e.target.value))}>
 							{Array.from({length:12}).map((_,i)=>(<option key={i+1} value={i+1}>{i+1}</option>))}
 						</select>
@@ -519,7 +524,7 @@ export default function PayrollPage() {
 								{companies.map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
 							</select>
 						)}
-						<input type="number" className="border border-amber-300 rounded px-2 py-1 w-28" value={year} onChange={(e)=>setYear(Number(e.target.value))} />
+						<input type="number" className="border border-amber-300 rounded px-2 py-1 w-28 text-amber-900" value={year} onChange={(e)=>setYear(Number(e.target.value))} />
 						<select className="border border-amber-300 rounded px-2 py-1" value={month} onChange={(e)=>setMonth(Number(e.target.value))}>
 							{Array.from({length:12}).map((_,i)=>(<option key={i+1} value={i+1}>{i+1}</option>))}
 						</select>

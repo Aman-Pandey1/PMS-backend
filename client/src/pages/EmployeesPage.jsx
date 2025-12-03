@@ -6,7 +6,6 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 export default function EmployeesPage() {
     const { user } = useAuth();
 	const [items, setItems] = useState([]);
-	const [managers, setManagers] = useState([]);
     const [companies, setCompanies] = useState([]);
     const [selectedCompanyId, setSelectedCompanyId] = useState('');
 
@@ -14,7 +13,7 @@ export default function EmployeesPage() {
 	const [fullName, setFullName] = useState('');
 	const [password, setPassword] = useState('');
 	const [role, setRole] = useState('EMPLOYEE');
-	const [managerId, setManagerId] = useState('');
+	const [jobPosition, setJobPosition] = useState('');
 	const [errors, setErrors] = useState({});
     const [msg, setMsg] = useState('');
     const [errMsg, setErrMsg] = useState('');
@@ -37,8 +36,6 @@ export default function EmployeesPage() {
                 }
             };
             load().catch(console.error);
-			// For simplicity, use mySubordinates as potential managers (or extend with listUsers by role SUPERVISOR)
-			mySubordinates().then((subs) => setManagers(subs)).catch(()=>{});
 		})();
 	}, [user?.role, selectedCompanyId]);
 
@@ -52,9 +49,9 @@ export default function EmployeesPage() {
 		setErrors(errs);
 		if (Object.keys(errs).length) return;
 		try {
-			const created = await createUser({ email, fullName, password, role, managerId: managerId || undefined });
+			const created = await createUser({ email, fullName, password, role, jobPosition: jobPosition || undefined });
 			setItems((prev) => [created, ...prev]);
-			setEmail(''); setFullName(''); setPassword(''); setRole('EMPLOYEE'); setManagerId(''); setErrors({});
+			setEmail(''); setFullName(''); setPassword(''); setRole('EMPLOYEE'); setJobPosition(''); setErrors({});
             setMsg('User created');
 		} catch (e) {
 			setErrMsg(e?.response?.data?.error || 'Failed to create');
@@ -111,7 +108,7 @@ export default function EmployeesPage() {
                     </div>
                     <div>
                         <label className="block text-sm mb-1 text-amber-900">Password</label>
-                        <input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} className={"w-full border rounded px-3 py-2 " + (errors.password ? 'border-red-500' : 'border-amber-300')} placeholder="Password" />
+                        <input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} autoComplete="new-password" className={"w-full border rounded px-3 py-2 " + (errors.password ? 'border-red-500' : 'border-amber-300')} placeholder="Password" />
                         {errors.password && <div className="text-xs text-red-600 mt-1">{errors.password}</div>}
                     </div>
                     <div>
@@ -122,12 +119,9 @@ export default function EmployeesPage() {
                             <option value="COMPANY_ADMIN">COMPANY_ADMIN</option>
                         </select>
                     </div>
-                    <div className="md:col-span-2">
-                        <label className="block text-sm mb-1 text-amber-900">Manager</label>
-                        <select value={managerId} onChange={(e)=>setManagerId(e.target.value)} className="w-full border border-amber-300 rounded px-3 py-2">
-                            <option value="">None</option>
-                            {managers.map((m) => <option key={m.id} value={m.id}>{m.fullName}</option>)}
-                        </select>
+					<div className="md:col-span-2">
+                        <label className="block text-sm mb-1 text-amber-900">Job Position</label>
+                        <input value={jobPosition} onChange={(e)=>setJobPosition(e.target.value)} className="w-full border border-amber-300 rounded px-3 py-2 text-amber-900" placeholder="e.g. Software Engineer, Manager" />
                     </div>
                     <div className="md:col-span-5 flex justify-end">
                         <button className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">Create</button>
@@ -142,6 +136,7 @@ export default function EmployeesPage() {
 						<tr className="bg-amber-50 text-amber-900">
 							<th className="text-left p-2 border-b border-amber-200">Name</th>
 							<th className="text-left p-2 border-b border-amber-200">Email</th>
+							<th className="text-left p-2 border-b border-amber-200">Job Position</th>
 							<th className="text-left p-2 border-b border-amber-200">Role</th>
 							<th className="text-left p-2 border-b border-amber-200">Active</th>
 							<th className="text-left p-2 border-b border-amber-200">Actions</th>
@@ -152,6 +147,7 @@ export default function EmployeesPage() {
 							<tr key={u.id}>
 								<td className="p-2 border-t border-amber-100">{u.fullName}</td>
 								<td className="p-2 border-t border-amber-100">{u.email}</td>
+								<td className="p-2 border-t border-amber-100">{u.jobPosition || '-'}</td>
 								<td className="p-2 border-t border-amber-100">{u.role}</td>
 								<td className="p-2 border-t border-amber-100">
 									<input type="checkbox" checked={u.isActive !== false} onChange={()=>onToggleActive(u)} />
@@ -169,11 +165,13 @@ export default function EmployeesPage() {
                 <div className="fixed inset-0 bg-black/40 grid place-items-center p-4">
                     <div className="bg-white rounded-lg border border-amber-300 max-w-sm w-full p-4">
                         <div className="font-medium text-amber-900 mb-2">Set password for {pwdModalUser.fullName}</div>
-                        <input type="password" className="w-full border border-amber-300 rounded px-3 py-2" placeholder="New password" value={pwdModalValue} onChange={(e)=>setPwdModalValue(e.target.value)} />
-                        <div className="mt-3 flex justify-end gap-2">
-                            <button onClick={()=>setPwdModalUser(null)} className="border border-amber-300 rounded px-3 py-1">Cancel</button>
-                            <button onClick={confirmSetPassword} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-1">Save</button>
-                        </div>
+                        <form onSubmit={(e)=>{e.preventDefault(); confirmSetPassword();}}>
+                            <input type="password" className="w-full border border-amber-300 rounded px-3 py-2" placeholder="New password" autoComplete="new-password" value={pwdModalValue} onChange={(e)=>setPwdModalValue(e.target.value)} />
+                            <div className="mt-3 flex justify-end gap-2">
+                                <button type="button" onClick={()=>setPwdModalUser(null)} className="border border-amber-300 rounded px-3 py-1">Cancel</button>
+                                <button type="submit" className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-1">Save</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

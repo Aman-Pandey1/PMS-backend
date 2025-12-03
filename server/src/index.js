@@ -10,6 +10,7 @@ import { env } from './config/env.js';
 import fs from 'fs';
 import path from 'path';
 import { Attendance } from './models/Attendance.js';
+import { Salary } from './models/Salary.js';
 import apiRouter from './routes/index.js';
 
 const app = express();
@@ -47,14 +48,24 @@ app.use('/api', apiRouter);
 
 async function ensureIndexes() {
 	try {
-		const indexes = await Attendance.collection.indexes();
-		const legacy = indexes.find(i => i.name === 'user_1_date_1');
-		if (legacy) {
+		// Fix Attendance indexes
+		const attendanceIndexes = await Attendance.collection.indexes();
+		const legacyAttendance = attendanceIndexes.find(i => i.name === 'user_1_date_1');
+		if (legacyAttendance) {
 			await Attendance.collection.dropIndex('user_1_date_1');
 			console.log('Dropped legacy attendance index user_1_date_1');
 		}
 		await Attendance.collection.createIndex({ userId: 1, date: 1 }, { name: 'userId_1_date_1', unique: true });
 		console.log('Ensured attendance unique index on userId+date');
+
+		// Fix Salary indexes - drop legacy 'user' index if it exists
+		const salaryIndexes = await Salary.collection.indexes();
+		const legacySalary = salaryIndexes.find(i => i.name === 'user_1');
+		if (legacySalary) {
+			await Salary.collection.dropIndex('user_1');
+			console.log('Dropped legacy salary index user_1');
+		}
+		console.log('Ensured salary indexes are correct');
 	} catch (e) {
 		console.warn('ensureIndexes failed', e?.message || e);
 	}

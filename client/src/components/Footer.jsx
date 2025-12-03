@@ -1,19 +1,7 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React from 'react';
 import { BRAND } from '../branding.js';
 
 export default function Footer() {
-  const [email, setEmail] = useState('');
-
-  function onSubmit(e) {
-    e.preventDefault();
-    try {
-      // No backend wired yet; act friendly and reset
-      setEmail('');
-      // eslint-disable-next-line no-alert
-      alert('Thanks for subscribing!');
-    } catch {}
-  }
 
   return (
     <footer className="mt-16 border-t border-amber-300/30 bg-amber-800 text-amber-100">
@@ -22,7 +10,7 @@ export default function Footer() {
         <div className="pointer-events-none absolute inset-x-0 -top-16 h-24 bg-gradient-to-b from-amber-300/20 to-transparent" />
 
         <div className="max-w-6xl mx-auto px-4 md:px-6 py-12">
-          <div className="grid md:grid-cols-3 gap-10 items-start">
+          <div className="flex flex-col md:flex-row items-start justify-between gap-8">
             <div>
               <div className="flex items-center gap-3">
                 <img src={BRAND.logoUrl} alt="Logo" className="h-10 w-auto rounded-sm" />
@@ -40,46 +28,6 @@ export default function Footer() {
                 <SocialIcon href="https://www.instagram.com/" label="Instagram">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.17.056 1.97.24 2.427.403.61.212 1.047.465 1.507.925.46.46.713.897.925 1.507.163.457.347 1.257.403 2.427.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.056 1.17-.24 1.97-.403 2.427a3.59 3.59 0 0 1-.925 1.507 3.59 3.59 0 0 1-1.507.925c-.457.163-1.257.347-2.427.403-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.17-.056-1.97-.24-2.427-.403a3.59 3.59 0 0 1-1.507-.925 3.59 3.59 0 0 1-.925-1.507c-.163-.457-.347-1.257-.403-2.427C2.175 15.584 2.163 15.204 2.163 12s.012-3.584.07-4.85c.056-1.17.24-1.97.403-2.427.212-.61.465-1.047.925-1.507.46-.46.897-.713 1.507-.925.457-.163 1.257-.347 2.427-.403C8.416 2.175 8.796 2.163 12 2.163Zm0 1.622c-3.155 0-3.526.012-4.768.069-1.027.047-1.584.218-1.953.362-.492.191-.843.418-1.213.788-.37.37-.597.72-.788 1.213-.144.37-.315.926-.362 1.953-.057 1.242-.069 1.613-.069 4.768s.012 3.526.069 4.768c.047 1.027.218 1.584.362 1.953.191.492.418.843.788 1.213.37.37.72.597 1.213.788.37.144.926.315 1.953.362 1.242.057 1.613.069 4.768.069s3.526-.012 4.768-.069c1.027-.047 1.584-.218 1.953-.362.492-.191.843-.418 1.213-.788.37-.37.72-.597 1.213-.788.37-.144.926-.315 1.953-.362 1.242-.057 1.613-.069 4.768-.069s3.526.012 4.768.069c1.027.047 1.584.218 1.953.362.492.191.843.418 1.213.788.37.37.72.597 1.213.788.37.144.926.315 1.953.362 1.242.057 1.613.069 4.768.069Z"/><path d="M12 5.838A6.162 6.162 0 1 0 12 18.162 6.162 6.162 0 1 0 12 5.838Zm0 10.162a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881Z"/></svg>
                 </SocialIcon>
-              </div>
-            </div>
-
-            <div className="md:col-span-2 grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-              <div>
-                <div className="text-sm font-semibold uppercase tracking-widest text-amber-200">Product</div>
-                <ul className="mt-3 space-y-2 text-amber-100/90">
-                  <li><Link to="/shop" className="hover:text-white">Shop</Link></li>
-                  <li><Link to="/home" className="hover:text-white">Home</Link></li>
-                  <li><Link to="/about" className="hover:text-white">About</Link></li>
-                </ul>
-              </div>
-              <div>
-                <div className="text-sm font-semibold uppercase tracking-widest text-amber-2 00">Company</div>
-                <ul className="mt-3 space-y-2 text-amber-100/90">
-                  <li><a href="mailto:hello@kkd.example" className="hover:text-white">Contact</a></li>
-                  <li><a href="tel:+911234567890" className="hover:text-white">+91 12345 67890</a></li>
-                </ul>
-              </div>
-              <div>
-                <div className="text-sm font-semibold uppercase tracking-widest text-amber-200">Resources</div>
-                <ul className="mt-3 space-y-2 text-amber-100/90">
-                  <li><a href="#" className="hover:text-white">FAQ</a></li>
-                  <li><a href="#" className="hover:text-white">Guides</a></li>
-                </ul>
-              </div>
-              <div>
-                <div className="text-sm font-semibold uppercase tracking-widest text-amber-200">Newsletter</div>
-                <form onSubmit={onSubmit} className="mt-3 flex gap-2">
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Your email"
-                    className="flex-1 rounded-lg px-4 py-2 bg-amber-900/40 border border-amber-300/30 placeholder:text-amber-100/70 focus:outline-none focus:ring-2 focus:ring-amber-300/60"
-                  />
-                  <button type="submit" className="rounded-lg px-4 py-2 bg-amber-300 text-amber-900 font-semibold hover:bg-amber-200">Subscribe</button>
-                </form>
-                <p className="text-xs text-amber-100/70 mt-2">We respect your privacy. Unsubscribe anytime.</p>
               </div>
             </div>
           </div>
