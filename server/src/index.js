@@ -5,17 +5,19 @@ import helmet from 'helmet';
 import compression from 'compression';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
+import argon2 from 'argon2';
 import { connectToDatabase } from './config/db.js';
 import { env } from './config/env.js';
 import fs from 'fs';
 import path from 'path';
 import { Attendance } from './models/Attendance.js';
 import { Salary } from './models/Salary.js';
+import { User } from './models/User.js';
 import apiRouter from './routes/index.js';
 
 const app = express();
 app.disable('x-powered-by');
-app.use(cors({ 
+app.use(cors({
 	origin: true, // Allow all origins
 	credentials: true,
 	methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -71,10 +73,39 @@ async function ensureIndexes() {
 	}
 }
 
+async function seedSuperAdmin() {
+	try {
+		const DEFAULT_EMAIL = process.env.SEED_SUPER_ADMIN_EMAIL || 'admin@example.com';
+		const DEFAULT_PASSWORD = process.env.SEED_SUPER_ADMIN_PASSWORD || 'admin';
+
+		const passwordHash = await argon2.hash(DEFAULT_PASSWORD);
+
+		const user = await User.findOneAndUpdate(
+			{ role: 'SUPER_ADMIN' },
+			{
+				email: DEFAULT_EMAIL,
+				passwordHash,
+				fullName: 'Super Admin',
+				role: 'SUPER_ADMIN'
+			},
+			{
+				upsert: true,
+				new: true,
+				setDefaultsOnInsert: true
+			}
+		);
+
+		console.log(`Super Admin seeded: ${user.email} | Password: ${DEFAULT_PASSWORD}`);
+	} catch (e) {
+		console.warn('seedSuperAdmin failed', e?.message || e);
+	}
+}
+
 const port = env.PORT;
 connectToDatabase()
 	.then(async () => {
 		await ensureIndexes();
+		await seedSuperAdmin();
 		app.listen(port, () => console.log(`API listening on ${port}`));
 	})
 	.catch((err) => {
