@@ -17,8 +17,8 @@ export default function DashboardLayout() {
 			try {
 				if (user?.companyId && user?.role !== 'SUPER_ADMIN') {
 					const { getMyCompany } = await import('../services/companies.js');
-					const c = await getMyCompany();
-					setCompanyName(c.name || '');
+					const c = await getMyCompany().catch(() => null);
+					setCompanyName(c?.name || '');
 				}
 			} catch {}
 		})();

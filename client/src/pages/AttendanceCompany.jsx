@@ -64,21 +64,32 @@ export default function AttendanceCompany() {
         })();
     }, [user?.role, companyId, items]);
 
+    const coordKey = (coords) => {
+        if (!Array.isArray(coords) || coords.length < 2) return null;
+        const lon = coords[0], lat = coords[1];
+        if (typeof lon !== 'number' || typeof lat !== 'number') return null;
+        return `${lat.toFixed(4)},${lon.toFixed(4)}`;
+    };
+    const coordDisplay = (coords) => {
+        if (!Array.isArray(coords) || coords.length < 2) return '-';
+        const lon = coords[0], lat = coords[1];
+        if (typeof lon !== 'number' || typeof lat !== 'number') return '-';
+        return `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+    };
+
     useEffect(() => {
         (async () => {
             const map = {};
             for (const r of items) {
                 const inC = r.checkInLocation?.coordinates;
-                if (inC) {
-                    const [lon, lat] = inC;
-                    const key = `${lat.toFixed(4)},${lon.toFixed(4)}`;
-                    map[key] = geocodeCache.get(key) || await reverseGeocode(lat, lon);
+                if (inC && typeof inC[0] === 'number' && typeof inC[1] === 'number') {
+                    const key = coordKey(inC);
+                    if (key) map[key] = geocodeCache.get(key) || await reverseGeocode(inC[1], inC[0]);
                 }
                 const outC = r.checkOutLocation?.coordinates;
-                if (outC) {
-                    const [lon, lat] = outC;
-                    const key = `${lat.toFixed(4)},${lon.toFixed(4)}`;
-                    map[key] = geocodeCache.get(key) || await reverseGeocode(lat, lon);
+                if (outC && typeof outC[0] === 'number' && typeof outC[1] === 'number') {
+                    const key = coordKey(outC);
+                    if (key) map[key] = geocodeCache.get(key) || await reverseGeocode(outC[1], outC[0]);
                 }
             }
             setCities(map);
@@ -179,14 +190,14 @@ export default function AttendanceCompany() {
                                 <td className="p-2 border-t border-amber-100">{r.date}</td>
                                 <td className="p-2 border-t border-amber-100">{r.checkInAt ? new Date(r.checkInAt).toLocaleString() : '-'}</td>
                                 <td className="p-2 border-t border-amber-100">{r.checkOutAt ? new Date(r.checkOutAt).toLocaleString() : '-'}</td>
-                                <td className="p-2 border-t border-amber-100">{r.checkInLocation?.coordinates ? (
+                                <td className="p-2 border-t border-amber-100">{coordKey(r.checkInLocation?.coordinates) ? (
                                     <a className="text-amber-800 underline" target="_blank" href={`https://maps.google.com/?q=${r.checkInLocation.coordinates[1]},${r.checkInLocation.coordinates[0]}`}>
-                                        {(() => { const [lon, lat] = r.checkInLocation.coordinates; const key = `${lat.toFixed(4)},${lon.toFixed(4)}`; return `${lat.toFixed(4)}, ${lon.toFixed(4)}${cities[key]?` · ${cities[key]}`:''}`; })()}
+                                        {coordDisplay(r.checkInLocation.coordinates)}{cities[coordKey(r.checkInLocation.coordinates)] ? ` · ${cities[coordKey(r.checkInLocation.coordinates)]}` : ''}
                                     </a>
                                 ) : '-'}</td>
-                                <td className="p-2 border-t border-amber-100">{r.checkOutLocation?.coordinates ? (
+                                <td className="p-2 border-t border-amber-100">{coordKey(r.checkOutLocation?.coordinates) ? (
                                     <a className="text-amber-800 underline" target="_blank" href={`https://maps.google.com/?q=${r.checkOutLocation.coordinates[1]},${r.checkOutLocation.coordinates[0]}`}>
-                                        {(() => { const [lon, lat] = r.checkOutLocation.coordinates; const key = `${lat.toFixed(4)},${lon.toFixed(4)}`; return `${lat.toFixed(4)}, ${lon.toFixed(4)}${cities[key]?` · ${cities[key]}`:''}`; })()}
+                                        {coordDisplay(r.checkOutLocation.coordinates)}{cities[coordKey(r.checkOutLocation.coordinates)] ? ` · ${cities[coordKey(r.checkOutLocation.coordinates)]}` : ''}
                                     </a>
                                 ) : '-'}</td>
                                 <td className="p-2 border-t border-amber-100">{r.dailyReport?.text || '-'}</td>

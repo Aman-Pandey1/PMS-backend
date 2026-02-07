@@ -11,12 +11,20 @@ export async function checkOut(report, lon, lat) {
 }
 
 export async function getMyAttendance() {
-	const { data } = await api.get('/attendance/me');
-	return data.items;
+	try {
+		const { data } = await api.get('/attendance/me');
+		return data?.items ?? [];
+	} catch {
+		return [];
+	}
 }
 
 export async function getCompanyAttendance(params = {}) {
-	const query = new URLSearchParams(params).toString();
-	const { data } = await api.get(`/attendance/company${query ? `?${query}` : ''}`);
-	return data.items;
+	try {
+		const query = new URLSearchParams(params).toString();
+		const { data } = await api.get(`/attendance/company${query ? `?${query}` : ''}`);
+		return data?.items ?? [];
+	} catch {
+		return [];
+	}
 }

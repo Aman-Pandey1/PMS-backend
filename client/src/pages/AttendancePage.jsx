@@ -54,26 +54,34 @@ export default function AttendancePage() {
 		return () => stopTimer();
 	}, [userRole]);
 
+	// Safe coord key/display (guard against undefined/malformed coordinates)
+	const coordKey = (coords) => {
+		if (!Array.isArray(coords) || coords.length < 2) return null;
+		const lon = coords[0], lat = coords[1];
+		if (typeof lon !== 'number' || typeof lat !== 'number') return null;
+		return `${lat.toFixed(4)},${lon.toFixed(4)}`;
+	};
+	const coordDisplay = (coords) => {
+		if (!Array.isArray(coords) || coords.length < 2) return '-';
+		const lon = coords[0], lat = coords[1];
+		if (typeof lon !== 'number' || typeof lat !== 'number') return '-';
+		return `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+	};
+
 	// Load location names for attendance records
 	useEffect(() => {
 		(async () => {
 			const map = {};
 			for (const r of recent) {
 				const inC = r.checkInLocation?.coordinates;
-				if (inC) {
-					const [lon, lat] = inC;
-					const key = `${lat.toFixed(4)},${lon.toFixed(4)}`;
-					if (!map[key]) {
-						map[key] = await reverseGeocode(lat, lon).catch(() => '');
-					}
+				if (inC && typeof inC[0] === 'number' && typeof inC[1] === 'number') {
+					const key = coordKey(inC);
+					if (key && !map[key]) map[key] = await reverseGeocode(inC[1], inC[0]).catch(() => '');
 				}
 				const outC = r.checkOutLocation?.coordinates;
-				if (outC) {
-					const [lon, lat] = outC;
-					const key = `${lat.toFixed(4)},${lon.toFixed(4)}`;
-					if (!map[key]) {
-						map[key] = await reverseGeocode(lat, lon).catch(() => '');
-					}
+				if (outC && typeof outC[0] === 'number' && typeof outC[1] === 'number') {
+					const key = coordKey(outC);
+					if (key && !map[key]) map[key] = await reverseGeocode(outC[1], outC[0]).catch(() => '');
 				}
 			}
 			setCities(map);
@@ -205,21 +213,23 @@ export default function AttendancePage() {
 							paged.map((r) => {
 								const inCoords = r.checkInLocation?.coordinates;
 								const outCoords = r.checkOutLocation?.coordinates;
-								const inKey = inCoords ? `${inCoords[1].toFixed(4)},${inCoords[0].toFixed(4)}` : null;
-								const outKey = outCoords ? `${outCoords[1].toFixed(4)},${outCoords[0].toFixed(4)}` : null;
+								const inKey = coordKey(inCoords);
+								const outKey = coordKey(outCoords);
+								const inDisplay = coordDisplay(inCoords);
+								const outDisplay = coordDisplay(outCoords);
 								return (
 									<tr key={r._id}>
 										<td className="p-2 border-t border-amber-100">{r.date}</td>
 										<td className="p-2 border-t border-amber-100">{r.checkInAt ? new Date(r.checkInAt).toLocaleTimeString() : '-'}</td>
 										<td className="p-2 border-t border-amber-100">{r.checkOutAt ? new Date(r.checkOutAt).toLocaleTimeString() : '-'}</td>
-										<td className="p-2 border-t border-amber-100">{inCoords ? (
+										<td className="p-2 border-t border-amber-100">{inKey ? (
 											<a className="text-amber-800 underline" target="_blank" rel="noreferrer" href={`https://maps.google.com/?q=${inCoords[1]},${inCoords[0]}`}>
-												{inCoords[1].toFixed(4)}, {inCoords[0].toFixed(4)}{cities[inKey] ? ` · ${cities[inKey]}` : ''}
+												{inDisplay}{cities[inKey] ? ` · ${cities[inKey]}` : ''}
 											</a>
 										) : '-'}</td>
-										<td className="p-2 border-t border-amber-100">{outCoords ? (
+										<td className="p-2 border-t border-amber-100">{outKey ? (
 											<a className="text-amber-800 underline" target="_blank" rel="noreferrer" href={`https://maps.google.com/?q=${outCoords[1]},${outCoords[0]}`}>
-												{outCoords[1].toFixed(4)}, {outCoords[0].toFixed(4)}{cities[outKey] ? ` · ${cities[outKey]}` : ''}
+												{outDisplay}{cities[outKey] ? ` · ${cities[outKey]}` : ''}
 											</a>
 										) : '-'}</td>
 										<td className="p-2 border-t border-amber-100">{r.dailyReport?.text || '-'}</td>

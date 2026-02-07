@@ -27,8 +27,8 @@ export const uploadLogo = [
 
 export async function myCompany(req, res) {
 	const companyId = req.user.companyId;
-	if (!companyId) return res.status(404).json({ error: 'No company' });
+	if (!companyId) return res.status(200).json(null);
 	const c = await Company.findById(companyId);
-	if (!c) return res.status(404).json({ error: 'Not found' });
+	if (!c) return res.status(200).json(null);
 	res.json({ id: c.id, name: c.name, code: c.code, status: c.status, logo: c.logo, address: c.address, allowedGeoZones: c.allowedGeoZones, allowedGeoCenter: c.allowedGeoCenter, allowedGeoRadiusMeters: c.allowedGeoRadiusMeters, weeklyOffDays: c.weeklyOffDays || [0], holidayDates: c.holidayDates || [], paidLeavePolicy: c.paidLeavePolicy || [] });
 }

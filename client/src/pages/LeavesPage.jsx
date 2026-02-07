@@ -67,7 +67,7 @@ export default function LeavesPage() {
 			try {
 				if (user?.role === 'EMPLOYEE' || user?.role === 'SUPERVISOR') {
 					const { getMyCompany } = await import('../services/companies.js');
-					setCompany(await getMyCompany());
+					setCompany(await getMyCompany().catch(() => null));
 					const { myLeaveBalance } = await import('../services/payroll.js');
 					const now = new Date();
 					setLeaveBalance(await myLeaveBalance(now.getFullYear(), now.getMonth()+1));
@@ -159,7 +159,7 @@ export default function LeavesPage() {
 					<div className="text-amber-900 font-medium mb-3">Apply Leave</div>
 					{company && (
 						<div className="mb-3 text-sm opacity-80">
-							<div>Weekly Offs: {(company.weeklyOffDays||[0]).map(d=>['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]).join(', ')}</div>
+							<div>Weekly Offs: {(company?.weeklyOffDays||[0]).map(d=>['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]).join(', ')}</div>
 							{/* Detailed holidays table shown below */}
 							{leaveBalance && (
 								<div className="mt-1">Paid Leave: {leaveBalance.remainingPaidLeave} remaining this month (allowed {leaveBalance.paidLeaveAllowed}, used {leaveBalance.usedPaidLeave})</div>
