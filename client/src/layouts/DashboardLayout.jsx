@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import clsx from 'clsx';
@@ -10,6 +10,7 @@ export default function DashboardLayout() {
 	const [companyName, setCompanyName] = useState('');
 	const [unread, setUnread] = useState([]);
 	const [showPopup, setShowPopup] = useState(false);
+	const dismissedNotificationIdsRef = useRef(new Set());
 
 	useEffect(() => {
 		(async () => {
@@ -35,7 +36,14 @@ export default function DashboardLayout() {
 					const items = await listNotifications();
 					const pending = (items || []).filter(n => !n.readAt);
 					setUnread(pending);
-					if (user?.role !== 'SUPER_ADMIN' && pending.length) setShowPopup(true);
+					// Only show popup if there are unread notifications AND user hasn't dismissed them
+					if (user?.role !== 'SUPER_ADMIN' && pending.length) {
+						// Check if there are any notifications that haven't been dismissed
+						const hasUndismissed = pending.some(n => !dismissedNotificationIdsRef.current.has(n._id || n.id));
+						if (hasUndismissed) {
+							setShowPopup(true);
+						}
+					}
 					// Cross-tab dedup using last timestamp
 					try {
 						const lastKey = 'notif:lastTs';
@@ -111,16 +119,29 @@ export default function DashboardLayout() {
 				if (next.length === 0) setShowPopup(false);
 				return next;
 			});
+			// Also mark as dismissed
+			dismissedNotificationIdsRef.current.add(id);
 		}
 		window.addEventListener('notification:read', onNotifRead);
 		return () => window.removeEventListener('notification:read', onNotifRead);
 	}, []);
 
-	async function dismissAndMarkAllRead() {
+	function dismissAndMarkAllRead() {
+		// Mark all current unread notifications as dismissed (don't show popup again for these)
+		const currentIds = unread.map(n => n._id || n.id);
+		currentIds.forEach(id => dismissedNotificationIdsRef.current.add(id));
+		setShowPopup(false);
+		// Notifications remain unread, user can still see them in notifications page
+	}
+
+	async function markAllReadAndDismiss() {
 		try {
 			const { markNotificationRead } = await import('../services/notifications.js');
 			await Promise.all(unread.map(n => markNotificationRead(n._id || n.id)));
 		} catch {}
+		// Also mark as dismissed so popup doesn't show again
+		const currentIds = unread.map(n => n._id || n.id);
+		currentIds.forEach(id => dismissedNotificationIdsRef.current.add(id));
 		setShowPopup(false);
 		setUnread([]);
 	}
@@ -202,7 +223,8 @@ export default function DashboardLayout() {
 							))}
 						</div>
 						<div className="p-3 border-t border-amber-200 flex justify-end gap-2">
-							<button onClick={dismissAndMarkAllRead} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">Mark all read</button>
+							<button onClick={dismissAndMarkAllRead} className="border border-amber-300 text-amber-900 rounded px-4 py-2 hover:bg-amber-50">Dismiss</button>
+							<button onClick={markAllReadAndDismiss} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">Mark all read</button>
 						</div>
 					</div>
 				</div>

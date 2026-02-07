@@ -34,8 +34,11 @@ export async function updateCompany(req, res) {
 		if (String(req.user.companyId) !== String(id)) return res.status(403).json({ error: 'Forbidden' });
 		const patch = {};
 		if (body.address) patch.address = body.address;
-		if (body.geofenceCenter) patch.geofenceCenter = body.geofenceCenter;
-		if (typeof body.geofenceRadiusMeters === 'number') patch.geofenceRadiusMeters = body.geofenceRadiusMeters;
+		// Support both old and new field names for backward compatibility
+		if (body.geofenceCenter) patch.allowedGeoCenter = body.geofenceCenter;
+		if (body.allowedGeoCenter) patch.allowedGeoCenter = body.allowedGeoCenter;
+		if (typeof body.geofenceRadiusMeters === 'number') patch.allowedGeoRadiusMeters = body.geofenceRadiusMeters;
+		if (typeof body.allowedGeoRadiusMeters === 'number') patch.allowedGeoRadiusMeters = body.allowedGeoRadiusMeters;
 		const updated = await Company.findByIdAndUpdate(id, patch, { new: true });
 		if (!updated) return res.status(404).json({ error: 'Not found' });
 		return res.json(updated);

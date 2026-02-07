@@ -135,6 +135,156 @@ export default function PayrollPage() {
 		try { return Number(value).toFixed(2); } catch { return String(value); }
 	}
 
+	const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+	async function downloadSalarySlipPDF(data, userData, year, month) {
+		try {
+			const { jsPDF } = await import('jspdf');
+			const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+			const monthName = monthNames[month - 1];
+			
+			const doc = new jsPDF();
+			const pageWidth = doc.internal.pageSize.getWidth();
+			const pageHeight = doc.internal.pageSize.getHeight();
+			const margin = 15;
+			let yPos = margin;
+
+			// Header
+			doc.setFillColor(199, 154, 106); // Amber color
+			doc.rect(0, 0, pageWidth, 40, 'F');
+			doc.setTextColor(255, 255, 255);
+			doc.setFontSize(20);
+			doc.setFont('helvetica', 'bold');
+			doc.text('SALARY SLIP', pageWidth / 2, 20, { align: 'center' });
+			doc.setFontSize(12);
+			doc.text(`${monthName} ${year}`, pageWidth / 2, 30, { align: 'center' });
+			
+			yPos = 50;
+			doc.setTextColor(0, 0, 0);
+
+			// Employee Details
+			doc.setFontSize(14);
+			doc.setFont('helvetica', 'bold');
+			doc.text('Employee Details', margin, yPos);
+			yPos += 8;
+			doc.setFontSize(10);
+			doc.setFont('helvetica', 'normal');
+			doc.text(`Name: ${userData?.fullName || 'N/A'}`, margin, yPos);
+			yPos += 6;
+			doc.text(`Email: ${userData?.email || 'N/A'}`, margin, yPos);
+			yPos += 6;
+			doc.text(`Employee ID: ${userData?.id || 'N/A'}`, margin, yPos);
+			yPos += 10;
+
+			// Salary Details Box
+			doc.setFillColor(250, 247, 240);
+			doc.rect(margin, yPos, pageWidth - 2 * margin, 60, 'F');
+			doc.setDrawColor(199, 154, 106);
+			doc.rect(margin, yPos, pageWidth - 2 * margin, 60, 'S');
+			
+			const boxY = yPos + 5;
+			doc.setFontSize(11);
+			doc.setFont('helvetica', 'bold');
+			doc.text('Salary Details', margin + 5, boxY);
+			
+			doc.setFontSize(9);
+			doc.setFont('helvetica', 'normal');
+			let detailY = boxY + 8;
+			doc.text(`Base Salary: ₹${formatCurrency(data.baseSalary)}`, margin + 5, detailY);
+			detailY += 6;
+			doc.text(`Working Days: ${data.workingDays}`, margin + 5, detailY);
+			detailY += 6;
+			doc.text(`Paid Leave Allowed: ${data.paidLeaveAllowed} days`, margin + 5, detailY);
+			detailY += 6;
+			doc.text(`Leave Days Taken: ${data.leaveDays} days`, margin + 5, detailY);
+			detailY += 6;
+			doc.text(`Unpaid Leave Days: ${data.unpaidLeaveDays} days`, margin + 5, detailY);
+			detailY += 6;
+			doc.text(`Deduction: ₹${formatCurrency(data.deduction)}`, margin + 5, detailY);
+			
+			const rightX = pageWidth - margin - 5;
+			detailY = boxY + 8;
+			doc.setFont('helvetica', 'bold');
+			doc.setFontSize(12);
+			doc.text(`Net Payable: ₹${formatCurrency(data.payable)}`, rightX, detailY, { align: 'right' });
+			
+			yPos += 70;
+
+			// Paid Leave Breakdown
+			if ((data.allowedPerType?.length || data.usedPerType?.length)) {
+				doc.setFontSize(11);
+				doc.setFont('helvetica', 'bold');
+				doc.text('Paid Leave Breakdown', margin, yPos);
+				yPos += 8;
+				
+				const tableTop = yPos;
+				const colWidths = [60, 40, 40, 50];
+				const colX = [margin, margin + colWidths[0], margin + colWidths[0] + colWidths[1], margin + colWidths[0] + colWidths[1] + colWidths[2]];
+				
+				// Table Header
+				doc.setFillColor(250, 235, 215);
+				doc.rect(margin, tableTop, pageWidth - 2 * margin, 8, 'F');
+				doc.setFontSize(9);
+				doc.setFont('helvetica', 'bold');
+				doc.text('Type', colX[0] + 2, tableTop + 6);
+				doc.text('Allowed', colX[1] + 2, tableTop + 6);
+				doc.text('Used', colX[2] + 2, tableTop + 6);
+				doc.text('Remaining', colX[3] + 2, tableTop + 6);
+				
+				yPos = tableTop + 8;
+				doc.setFont('helvetica', 'normal');
+				const types = Array.from(new Set([...(data.allowedPerType||[]).map(x=>x.type), ...(data.usedPerType||[]).map(x=>x.type)]));
+				types.forEach(t => {
+					const a = (data.allowedPerType||[]).find(x=>x.type===t)?.days ?? 0;
+					const u = (data.usedPerType||[]).find(x=>x.type===t)?.days ?? 0;
+					const r = Math.max(0, a - u);
+					doc.text(t.charAt(0).toUpperCase() + t.slice(1), colX[0] + 2, yPos + 4);
+					doc.text(String(a), colX[1] + 2, yPos + 4);
+					doc.text(String(u), colX[2] + 2, yPos + 4);
+					doc.text(String(r), colX[3] + 2, yPos + 4);
+					doc.setDrawColor(220, 220, 220);
+					doc.line(margin, yPos, pageWidth - margin, yPos);
+					yPos += 6;
+				});
+				yPos += 5;
+			}
+
+			// Holidays
+			if (data.holidays && data.holidays.length > 0) {
+				if (yPos > pageHeight - 40) {
+					doc.addPage();
+					yPos = margin;
+				}
+				doc.setFontSize(11);
+				doc.setFont('helvetica', 'bold');
+				doc.text('Holidays This Month', margin, yPos);
+				yPos += 8;
+				doc.setFontSize(9);
+				doc.setFont('helvetica', 'normal');
+				data.holidays.sort((a,b) => new Date(a.date) - new Date(b.date)).forEach(h => {
+					const dateStr = new Date(h.date).toLocaleDateString();
+					doc.text(`${dateStr}: ${h.label || 'Holiday'}`, margin + 5, yPos);
+					yPos += 6;
+				});
+				yPos += 5;
+			}
+
+			// Footer
+			const footerY = pageHeight - 20;
+			doc.setFontSize(8);
+			doc.setTextColor(128, 128, 128);
+			doc.text('This is a computer-generated document and does not require a signature.', pageWidth / 2, footerY, { align: 'center' });
+			doc.text(`Generated on: ${new Date().toLocaleString()}`, pageWidth / 2, footerY + 6, { align: 'center' });
+
+			// Save PDF
+			const fileName = `Salary_Slip_${userData?.fullName?.replace(/\s+/g, '_') || 'Employee'}_${monthName}_${year}.pdf`;
+			doc.save(fileName);
+		} catch (e) {
+			console.error('Failed to generate PDF', e);
+			alert('Failed to generate PDF. Please try again.');
+		}
+	}
+
 	if (isEmployeeView) {
 		return (
 			<div className="space-y-4">
@@ -146,7 +296,7 @@ export default function PayrollPage() {
 					<div className="flex gap-2 items-center">
 						<input type="number" className="border border-amber-300 rounded px-2 py-1 w-28 text-amber-900" value={myYear} onChange={(e)=>setMyYear(Number(e.target.value)||new Date().getFullYear())} />
 						<select className="border border-amber-300 rounded px-2 py-1" value={myMonth} onChange={(e)=>setMyMonth(Number(e.target.value)||1)}>
-							{Array.from({length:12}).map((_,i)=>(<option key={i+1} value={i+1}>{i+1}</option>))}
+							{monthNames.map((name, i)=>(<option key={i+1} value={i+1}>{name}</option>))}
 						</select>
 						<button onClick={async()=>{
 							setErrMsg(''); setMsg('');
@@ -156,6 +306,11 @@ export default function PayrollPage() {
 					</div>
 					{myMonthlyData && (
 						<div className="grid gap-3">
+							<div className="flex justify-end">
+								<button onClick={() => downloadSalarySlipPDF(myMonthlyData, user, myYear, myMonth)} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">
+									📥 Download Salary Slip PDF
+								</button>
+							</div>
 							<div className="grid md:grid-cols-3 gap-3">
 								<div className="p-3 border border-amber-200 rounded"><div className="text-sm opacity-70">Base Salary</div><div className="text-xl font-semibold">{myMonthlyData.baseSalary}</div></div>
 								<div className="p-3 border border-amber-200 rounded"><div className="text-sm opacity-70">Working Days</div><div className="text-xl font-semibold">{myMonthlyData.workingDays}</div></div>
@@ -327,7 +482,7 @@ export default function PayrollPage() {
 						)}
 						<input type="number" className="border border-amber-300 rounded px-2 py-1 w-28 text-amber-900" value={year} onChange={(e)=>setYear(Number(e.target.value))} />
 						<select className="border border-amber-300 rounded px-2 py-1" value={month} onChange={(e)=>setMonth(Number(e.target.value))}>
-							{Array.from({length:12}).map((_,i)=>(<option key={i+1} value={i+1}>{i+1}</option>))}
+							{monthNames.map((name, i)=>(<option key={i+1} value={i+1}>{name}</option>))}
 						</select>
 						<button onClick={async()=>{
 							setErrMsg(''); setMsg(''); setEmpLoading(true); setEmpRows([]);
@@ -448,16 +603,25 @@ export default function PayrollPage() {
 					<div className="flex gap-2 items-center">
 						<input type="number" className="border border-amber-300 rounded px-2 py-1 w-28 text-amber-900" value={year} onChange={(e)=>setYear(Number(e.target.value))} />
 						<select className="border border-amber-300 rounded px-2 py-1" value={month} onChange={(e)=>setMonth(Number(e.target.value))}>
-							{Array.from({length:12}).map((_,i)=>(<option key={i+1} value={i+1}>{i+1}</option>))}
+							{monthNames.map((name, i)=>(<option key={i+1} value={i+1}>{name}</option>))}
 						</select>
 						<button onClick={compute} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-1">Compute</button>
 					</div>
 					{monthly && (
-						<div className="grid md:grid-cols-3 gap-3">
-							<div className="p-3 border border-amber-200 rounded">
-								<div className="text-sm opacity-70">Base Salary</div>
-								<div className="text-xl font-semibold">{monthly.baseSalary}</div>
+						<div className="grid gap-3">
+							<div className="flex justify-end">
+								<button onClick={() => {
+									const emp = employees.find(e => e.id === selectedEmployee);
+									downloadSalarySlipPDF(monthly, emp || { fullName: 'Employee', email: '', id: selectedEmployee }, year, month);
+								}} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">
+									📥 Download Salary Slip PDF
+								</button>
 							</div>
+							<div className="grid md:grid-cols-3 gap-3">
+								<div className="p-3 border border-amber-200 rounded">
+									<div className="text-sm opacity-70">Base Salary</div>
+									<div className="text-xl font-semibold">{monthly.baseSalary}</div>
+								</div>
 							<div className="p-3 border border-amber-200 rounded">
 								<div className="text-sm opacity-70">Working Days</div>
 								<div className="text-xl font-semibold">{monthly.workingDays}</div>
@@ -514,6 +678,66 @@ export default function PayrollPage() {
 				</div>
 			)}
 
+			{/* Slip Modal */}
+			{slipOpen && (
+				<div className="fixed inset-0 bg-black/40 grid place-items-center p-4 z-[9999]">
+					<div className="bg-white rounded-lg border border-amber-300 max-w-2xl w-full max-h-[80vh] overflow-y-auto z-[10000]">
+						<div className="px-4 py-3 border-b border-amber-200 bg-amber-50 text-amber-900 flex items-center justify-between">
+							<div className="font-medium">Salary Slip - {slipUserName}</div>
+							<button onClick={() => { setSlipOpen(false); setSlipData(null); }} className="text-amber-900">✕</button>
+						</div>
+						<div className="p-4">
+							{slipLoading ? (
+								<div className="text-center py-8">Loading...</div>
+							) : slipErr ? (
+								<div className="text-red-600">{slipErr}</div>
+							) : slipData ? (
+								<div className="space-y-4">
+									<div className="flex justify-end">
+										<button onClick={() => {
+											const emp = employees.find(e => e.id === (slipData.userId || '')) || { fullName: slipUserName, email: '', id: slipData.userId || '' };
+											downloadSalarySlipPDF(slipData, emp, year, month);
+										}} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">
+											📥 Download PDF
+										</button>
+									</div>
+									<div className="grid md:grid-cols-3 gap-3">
+										<div className="p-3 border border-amber-200 rounded">
+											<div className="text-sm opacity-70">Base Salary</div>
+											<div className="text-xl font-semibold">{slipData.baseSalary}</div>
+										</div>
+										<div className="p-3 border border-amber-200 rounded">
+											<div className="text-sm opacity-70">Working Days</div>
+											<div className="text-xl font-semibold">{slipData.workingDays}</div>
+										</div>
+										<div className="p-3 border border-amber-200 rounded">
+											<div className="text-sm opacity-70">Paid Leave Allowed</div>
+											<div className="text-xl font-semibold">{slipData.paidLeaveAllowed}</div>
+										</div>
+										<div className="p-3 border border-amber-200 rounded">
+											<div className="text-sm opacity-70">Leave Days</div>
+											<div className="text-xl font-semibold">{slipData.leaveDays}</div>
+										</div>
+										<div className="p-3 border border-amber-200 rounded">
+											<div className="text-sm opacity-70">Unpaid Leave Days</div>
+											<div className="text-xl font-semibold">{slipData.unpaidLeaveDays}</div>
+										</div>
+										<div className="p-3 border border-amber-200 rounded">
+											<div className="text-sm opacity-70">Deduction</div>
+											<div className="text-xl font-semibold">{formatCurrency(slipData.deduction)}</div>
+										</div>
+										<div className="p-3 border border-amber-200 rounded md:col-span-3">
+											<div className="text-sm opacity-70">Payable</div>
+											<div className="text-2xl font-bold">{formatCurrency(slipData.payable)}</div>
+										</div>
+									</div>
+								</div>
+							) : null}
+						</div>
+					</div>
+				</div>
+			)}
+
 			{tab==='overview' && (
 				<div className="bg-white border border-amber-300 rounded p-4 grid gap-3">
 					<div className="text-amber-900 font-medium">Overview (Monthly)</div>
@@ -526,7 +750,7 @@ export default function PayrollPage() {
 						)}
 						<input type="number" className="border border-amber-300 rounded px-2 py-1 w-28 text-amber-900" value={year} onChange={(e)=>setYear(Number(e.target.value))} />
 						<select className="border border-amber-300 rounded px-2 py-1" value={month} onChange={(e)=>setMonth(Number(e.target.value))}>
-							{Array.from({length:12}).map((_,i)=>(<option key={i+1} value={i+1}>{i+1}</option>))}
+							{monthNames.map((name, i)=>(<option key={i+1} value={i+1}>{name}</option>))}
 						</select>
 						<button onClick={async()=>{
 							setErrMsg(''); setMsg(''); setOverviewLoading(true); setOverviewRows([]);

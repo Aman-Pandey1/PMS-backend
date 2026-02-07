@@ -90,20 +90,39 @@ export default function SettingsPage() {
 			{user?.role === 'COMPANY_ADMIN' ? (
 				<div className="bg-white border border-amber-300 rounded p-4 grid md:grid-cols-3 gap-3">
 					<div className="md:col-span-3 text-amber-900 font-medium">Company Location Settings</div>
+					<div className="md:col-span-3 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+						<strong>Note:</strong> Set the company location center and radius. Employees can only check-in/check-out when they are within this radius from the center point.
+					</div>
 					<div>
 						<label className="block text-sm mb-1 text-amber-900">Center Latitude</label>
-						<input className="w-full border border-amber-300 rounded px-3 py-2" value={centerLat} onChange={(e)=>setCenterLat(e.target.value)} placeholder="e.g. 12.9716" />
+						<input type="number" step="any" className="w-full border border-amber-300 rounded px-3 py-2" value={centerLat} onChange={(e)=>setCenterLat(e.target.value)} placeholder="e.g. 12.9716" />
 					</div>
 					<div>
 						<label className="block text-sm mb-1 text-amber-900">Center Longitude</label>
-						<input className="w-full border border-amber-300 rounded px-3 py-2" value={centerLon} onChange={(e)=>setCenterLon(e.target.value)} placeholder="e.g. 77.5946" />
+						<input type="number" step="any" className="w-full border border-amber-300 rounded px-3 py-2" value={centerLon} onChange={(e)=>setCenterLon(e.target.value)} placeholder="e.g. 77.5946" />
 					</div>
 					<div>
 						<label className="block text-sm mb-1 text-amber-900">Radius (meters)</label>
-						<input className="w-full border border-amber-300 rounded px-3 py-2" value={radius} onChange={(e)=>setRadius(e.target.value)} placeholder="e.g. 300" />
+						<input type="number" step="any" className="w-full border border-amber-300 rounded px-3 py-2" value={radius} onChange={(e)=>setRadius(e.target.value)} placeholder="e.g. 300" />
 					</div>
-					<div className="md:col-span-3 flex justify-end">
-						<button onClick={saveGeo} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">Save</button>
+					<div className="md:col-span-3 flex gap-2">
+						<button type="button" onClick={() => {
+							if (navigator.geolocation) {
+								navigator.geolocation.getCurrentPosition((pos) => {
+									setCenterLat(pos.coords.latitude.toFixed(6));
+									setCenterLon(pos.coords.longitude.toFixed(6));
+									setMsg('Current location captured');
+								}, (err) => {
+									setErrMsg('Failed to get location: ' + err.message);
+								});
+							} else {
+								setErrMsg('Geolocation is not supported by your browser');
+							}
+						}} className="border border-amber-300 text-amber-900 rounded px-4 py-2 hover:bg-amber-50">
+							📍 Get Current Location
+						</button>
+						<div className="flex-1"></div>
+						<button onClick={saveGeo} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">Save Location</button>
 					</div>
 					<div className="md:col-span-3 border-t my-2"></div>
 					<div className="md:col-span-3 text-amber-900 font-medium">Leave Calendar</div>

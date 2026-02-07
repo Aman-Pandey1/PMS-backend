@@ -353,8 +353,8 @@ export default function TasksPage() {
 
 			{/* Modal */}
 			{selectedTask && (
-				<div className="fixed inset-0 bg-black/40 grid place-items-center p-4">
-					<div className="bg-white rounded-lg border border-amber-300 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+				<div className="fixed inset-0 bg-black/40 grid place-items-center p-4 z-[9999]">
+					<div className="bg-white rounded-lg border border-amber-300 max-w-2xl w-full max-h-[80vh] overflow-y-auto z-[10000]">
 						<div className="px-4 py-3 border-b border-amber-200 flex justify-between items-center bg-amber-50 text-amber-900">
 							<div className="font-medium">Task</div>
 							<button onClick={() => setSelectedTask(null)} className="text-amber-900">✕</button>

@@ -17,20 +17,31 @@ export async function checkIn(req, res) {
 	const company = await Company.findById(companyId).lean();
 	const hasPolys = Array.isArray(company?.allowedGeoZones) && company.allowedGeoZones.length > 0;
 	const hasCircle = company?.allowedGeoCenter?.coordinates && company?.allowedGeoRadiusMeters;
-	let isInside = true;
+	
+	// If no geofence is set, require it to be set first
+	if (!hasPolys && !hasCircle) {
+		return res.status(403).json({ error: 'Company location not configured. Please contact administrator.' });
+	}
+	
+	let isInside = false;
+	
+	// Helper function for point-in-polygon (ray casting algorithm)
+	function pointInPolygon(lon, lat, polygonCoords) {
+		let inside = false;
+		for (let i = 0, j = polygonCoords.length - 1; i < polygonCoords.length; j = i++) {
+			const xi = polygonCoords[i][0], yi = polygonCoords[i][1];
+			const xj = polygonCoords[j][0], yj = polygonCoords[j][1];
+			const intersect = ((yi > lat) !== (yj > lat)) && (lon < ((xj - xi) * (lat - yi) / (yj - yi + Number.EPSILON) + xi));
+			if (intersect) inside = !inside;
+		}
+		return inside;
+	}
+	
 	if (hasPolys) {
 		isInside = company.allowedGeoZones.some((poly) => {
 			try {
-				if (poly.type === 'Polygon') {
-					const coords = poly.coordinates[0];
-					let c = false;
-					for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
-						const xi = coords[i][0], yi = coords[i][1];
-						const xj = coords[j][0], yj = coords[j][1];
-						const intersect = ((yi > lat) !== (yj > lat)) && (lon < (xj - xi) * (lat - yi) / (yj - yi + Number.EPSILON) + xi);
-						if (intersect) c = !c;
-					}
-					return c;
+				if (poly.type === 'Polygon' && Array.isArray(poly.coordinates) && poly.coordinates[0]) {
+					return pointInPolygon(lon, lat, poly.coordinates[0]);
 				}
 				return false;
 			} catch { return false; }
@@ -39,34 +50,29 @@ export async function checkIn(req, res) {
 		try {
 			const [clon, clat] = company.allowedGeoCenter.coordinates;
 			const toRad = (d) => d * Math.PI / 180;
-			const R = 6371000;
+			const R = 6371000; // Earth radius in meters
 			const dLat = toRad(lat - clat);
 			const dLon = toRad(lon - clon);
 			const a = Math.sin(dLat/2)**2 + Math.cos(toRad(clat)) * Math.cos(toRad(lat)) * Math.sin(dLon/2)**2;
 			const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 			const dist = R * c;
 			isInside = dist <= company.allowedGeoRadiusMeters;
-		} catch { isInside = true; }
+		} catch { isInside = false; }
 	}
-	if (!isInside && user?.geoAllowedZones && user.geoAllowedZones.length > 0) {
+	
+	// Fallback to user-level zones if company check failed
+	if (!isInside && user?.geoAllowedZones && Array.isArray(user.geoAllowedZones) && user.geoAllowedZones.length > 0) {
 		isInside = user.geoAllowedZones.some((poly) => {
 			try {
-				if (poly.type === 'Polygon') {
-					const coords = poly.coordinates[0];
-					let c = false;
-					for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
-						const xi = coords[i][0], yi = coords[i][1];
-						const xj = coords[j][0], yj = coords[j][1];
-						const intersect = ((yi > lat) !== (yj > lat)) && (lon < (xj - xi) * (lat - yi) / (yj - yi + Number.EPSILON) + xi);
-						if (intersect) c = !c;
-					}
-					return c;
+				if (poly.type === 'Polygon' && Array.isArray(poly.coordinates) && poly.coordinates[0]) {
+					return pointInPolygon(lon, lat, poly.coordinates[0]);
 				}
 				return false;
 			} catch { return false; }
 		});
 	}
-	if (!isInside) return res.status(403).json({ error: 'Outside allowed location' });
+	
+	if (!isInside) return res.status(403).json({ error: 'Outside allowed location. Please check-in from the designated company location.' });
 	const rec = await Attendance.create({ userId, companyId, date, checkInAt: new Date(), checkInLocation: { type: 'Point', coordinates: [lon, lat] }, dailyReport: { submitted: false }, status: 'OPEN' });
 	res.status(201).json(rec);
 }
@@ -79,28 +85,37 @@ export async function checkOut(req, res) {
 	const date = dayjs().format('YYYY-MM-DD');
 	const rec = await Attendance.findOne({ userId, date });
 	if (!rec) return res.status(404).json({ error: 'No open attendance' });
-	if (!report) return res.status(400).json({ error: 'Daily report required' });
+	// Strict validation: report must be provided and not empty/whitespace only
+	if (!report || typeof report !== 'string' || report.trim().length === 0) {
+		return res.status(400).json({ error: 'Daily report is required. Please provide a report before checking out.' });
+	}
 	// Determine if checkout location is outside allowed area; flag if outside but still allow checkout
 	let flagged = false;
-	try {
-		const company = await Company.findById(companyId).lean();
-		const hasPolys = Array.isArray(company?.allowedGeoZones) && company.allowedGeoZones.length > 0;
-		const hasCircle = company?.allowedGeoCenter?.coordinates && company?.allowedGeoRadiusMeters;
-		let inside = true;
-		if (lon !== undefined && lat !== undefined) {
+	
+	// Helper function for point-in-polygon (ray casting algorithm)
+	function pointInPolygon(lon, lat, polygonCoords) {
+		let inside = false;
+		for (let i = 0, j = polygonCoords.length - 1; i < polygonCoords.length; j = i++) {
+			const xi = polygonCoords[i][0], yi = polygonCoords[i][1];
+			const xj = polygonCoords[j][0], yj = polygonCoords[j][1];
+			const intersect = ((yi > lat) !== (yj > lat)) && (lon < ((xj - xi) * (lat - yi) / (yj - yi + Number.EPSILON) + xi));
+			if (intersect) inside = !inside;
+		}
+		return inside;
+	}
+	
+	if (lon !== undefined && lat !== undefined) {
+		try {
+			const company = await Company.findById(companyId).lean();
+			const hasPolys = Array.isArray(company?.allowedGeoZones) && company.allowedGeoZones.length > 0;
+			const hasCircle = company?.allowedGeoCenter?.coordinates && company?.allowedGeoRadiusMeters;
+			let inside = false;
+			
 			if (hasPolys) {
 				inside = company.allowedGeoZones.some((poly) => {
 					try {
-						if (poly.type === 'Polygon') {
-							const coords = poly.coordinates[0];
-							let c = false;
-							for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
-								const xi = coords[i][0], yi = coords[i][1];
-								const xj = coords[j][0], yj = coords[j][1];
-								const intersect = ((yi > lat) !== (yj > lat)) && (lon < (xj - xi) * (lat - yi) / (yj - yi + Number.EPSILON) + xi);
-								if (intersect) c = !c;
-							}
-							return c;
+						if (poly.type === 'Polygon' && Array.isArray(poly.coordinates) && poly.coordinates[0]) {
+							return pointInPolygon(lon, lat, poly.coordinates[0]);
 						}
 						return false;
 					} catch { return false; }
@@ -108,7 +123,7 @@ export async function checkOut(req, res) {
 			} else if (hasCircle) {
 				const [clon, clat] = company.allowedGeoCenter.coordinates;
 				const toRad = (d) => d * Math.PI / 180;
-				const R = 6371000;
+				const R = 6371000; // Earth radius in meters
 				const dLat = toRad(lat - clat);
 				const dLon = toRad(lon - clon);
 				const a = Math.sin(dLat/2)**2 + Math.cos(toRad(clat)) * Math.cos(toRad(lat)) * Math.sin(dLon/2)**2;
@@ -117,8 +132,8 @@ export async function checkOut(req, res) {
 				inside = dist <= company.allowedGeoRadiusMeters;
 			}
 			flagged = !inside;
-		}
-	} catch {}
+		} catch {}
+	}
 	rec.dailyReport = { submitted: true, text: report };
 	rec.checkOutAt = new Date();
 	rec.checkOutLocation = (lon !== undefined && lat !== undefined) ? { type: 'Point', coordinates: [lon, lat] } : rec.checkOutLocation;

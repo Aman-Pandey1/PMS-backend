@@ -13,25 +13,46 @@ export default function AttendancePage() {
     const [page, setPage] = useState(1);
     const pageSize = 10;
 	const [cities, setCities] = useState({});
+	const [userRole, setUserRole] = useState(null);
 	const timerRef = useRef(null);
 	const startRef = useRef(null);
 
+	// Get user role safely
+	useEffect(() => {
+		try {
+			const raw = localStorage.getItem('auth:user');
+			if (raw) {
+				const user = JSON.parse(raw);
+				setUserRole(user?.role || null);
+			}
+		} catch (e) {
+			console.error('Failed to parse user from localStorage', e);
+		}
+	}, []);
+
 	useEffect(() => {
 		(async () => {
+			// Only fetch attendance for EMPLOYEE and SUPERVISOR roles
+			if (!['EMPLOYEE', 'SUPERVISOR'].includes(userRole)) {
+				return;
+			}
 			try {
 				const { getMyAttendance } = await import('../services/attendance.js');
 				const list = await getMyAttendance();
-				setRecent(list);
-				const today = list.find(r => r.status === 'OPEN');
+				setRecent(list || []);
+				const today = list?.find(r => r.status === 'OPEN');
 				if (today) {
 					setCheckedIn(true);
 					startRef.current = new Date(today.checkInAt).getTime();
 					startTimer();
 				}
-			} catch {}
+			} catch (e) {
+				console.error('Failed to load attendance', e);
+				setRecent([]);
+			}
 		})();
 		return () => stopTimer();
-	}, []);
+	}, [userRole]);
 
 	// Load location names for attendance records
 	useEffect(() => {
@@ -84,6 +105,11 @@ export default function AttendancePage() {
 				startTimer();
 				setMsg(res?.alert ? `Checked in (Alert: ${res.alert})` : 'Checked in');
 			} else {
+				// Validate report before attempting check-out
+				if (!report || report.trim().length === 0) {
+					setErrMsg('Daily report is required to check out. Please provide a report.');
+					return;
+				}
 				const res = await (await import('../services/attendance.js')).checkOut(report, longitude, latitude);
 				setCheckedIn(false);
 				setReport('');
@@ -121,14 +147,34 @@ export default function AttendancePage() {
 			<h1 className="text-2xl font-bold">Attendance</h1>
 			{msg && <div className="text-green-800 bg-green-50 border border-green-200 rounded p-2">{msg}</div>}
 			{errMsg && <div className="text-red-800 bg-red-50 border border-red-200 rounded p-2">{errMsg}</div>}
-			{(['EMPLOYEE','SUPERVISOR'].includes((window.localStorage.getItem('auth:user') ? (JSON.parse(window.localStorage.getItem('auth:user'))?.role) : ''))) ? (
+			{(['EMPLOYEE','SUPERVISOR'].includes(userRole)) ? (
 				<>
 					<div className="flex items-center gap-4">
-						<button className="bg-amber-700 hover:bg-amber-800 text-white px-3 py-2 rounded" onClick={toggle} disabled={checkedIn && !report && elapsed>0 && false}>{checkedIn ? 'Check out' : 'Check in'}</button>
+						<button 
+							className={`px-3 py-2 rounded ${checkedIn && (!report || report.trim().length === 0) 
+								? 'bg-gray-400 cursor-not-allowed text-white' 
+								: 'bg-amber-700 hover:bg-amber-800 text-white'}`} 
+							onClick={toggle} 
+							disabled={checkedIn && (!report || report.trim().length === 0)}
+						>
+							{checkedIn ? 'Check out' : 'Check in'}
+						</button>
 						{checkedIn && <div className="text-amber-900 font-mono">Timer: {format(elapsed)}</div>}
 						{coords && <div className="text-sm opacity-70">Location: {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}{city?` · ${city}`:''}</div>}
 					</div>
-					<textarea className="w-full border border-amber-300 rounded p-2" placeholder="Daily report (required to check out)" value={report} onChange={(e) => setReport(e.target.value)} />
+					<div>
+						<textarea 
+							className="w-full border border-amber-300 rounded p-2" 
+							placeholder="Daily report (required to check out)" 
+							value={report} 
+							onChange={(e) => setReport(e.target.value)}
+							required
+							minLength={1}
+						/>
+						{checkedIn && (!report || report.trim().length === 0) && (
+							<div className="text-red-600 text-sm mt-1">⚠️ Daily report is required to check out</div>
+						)}
+					</div>
 					<div className="text-sm opacity-70">Status: {checkedIn ? 'Checked in' : 'Not checked in'}</div>
 				</>
 			) : (
@@ -149,30 +195,38 @@ export default function AttendancePage() {
 						</tr>
 					</thead>
 					<tbody>
-						{paged.map((r) => {
-							const inCoords = r.checkInLocation?.coordinates;
-							const outCoords = r.checkOutLocation?.coordinates;
-							const inKey = inCoords ? `${inCoords[1].toFixed(4)},${inCoords[0].toFixed(4)}` : null;
-							const outKey = outCoords ? `${outCoords[1].toFixed(4)},${outCoords[0].toFixed(4)}` : null;
-							return (
-								<tr key={r._id}>
-									<td className="p-2 border-t border-amber-100">{r.date}</td>
-									<td className="p-2 border-t border-amber-100">{r.checkInAt ? new Date(r.checkInAt).toLocaleTimeString() : '-'}</td>
-									<td className="p-2 border-t border-amber-100">{r.checkOutAt ? new Date(r.checkOutAt).toLocaleTimeString() : '-'}</td>
-									<td className="p-2 border-t border-amber-100">{inCoords ? (
-										<a className="text-amber-800 underline" target="_blank" rel="noreferrer" href={`https://maps.google.com/?q=${inCoords[1]},${inCoords[0]}`}>
-											{inCoords[1].toFixed(4)}, {inCoords[0].toFixed(4)}{cities[inKey] ? ` · ${cities[inKey]}` : ''}
-										</a>
-									) : '-'}</td>
-									<td className="p-2 border-t border-amber-100">{outCoords ? (
-										<a className="text-amber-800 underline" target="_blank" rel="noreferrer" href={`https://maps.google.com/?q=${outCoords[1]},${outCoords[0]}`}>
-											{outCoords[1].toFixed(4)}, {outCoords[0].toFixed(4)}{cities[outKey] ? ` · ${cities[outKey]}` : ''}
-										</a>
-									) : '-'}</td>
-									<td className="p-2 border-t border-amber-100">{r.dailyReport?.text || '-'}</td>
-								</tr>
-							);
-						})}
+						{paged.length === 0 ? (
+							<tr>
+								<td colSpan="6" className="p-4 text-center text-amber-700 opacity-70">
+									No attendance records found
+								</td>
+							</tr>
+						) : (
+							paged.map((r) => {
+								const inCoords = r.checkInLocation?.coordinates;
+								const outCoords = r.checkOutLocation?.coordinates;
+								const inKey = inCoords ? `${inCoords[1].toFixed(4)},${inCoords[0].toFixed(4)}` : null;
+								const outKey = outCoords ? `${outCoords[1].toFixed(4)},${outCoords[0].toFixed(4)}` : null;
+								return (
+									<tr key={r._id}>
+										<td className="p-2 border-t border-amber-100">{r.date}</td>
+										<td className="p-2 border-t border-amber-100">{r.checkInAt ? new Date(r.checkInAt).toLocaleTimeString() : '-'}</td>
+										<td className="p-2 border-t border-amber-100">{r.checkOutAt ? new Date(r.checkOutAt).toLocaleTimeString() : '-'}</td>
+										<td className="p-2 border-t border-amber-100">{inCoords ? (
+											<a className="text-amber-800 underline" target="_blank" rel="noreferrer" href={`https://maps.google.com/?q=${inCoords[1]},${inCoords[0]}`}>
+												{inCoords[1].toFixed(4)}, {inCoords[0].toFixed(4)}{cities[inKey] ? ` · ${cities[inKey]}` : ''}
+											</a>
+										) : '-'}</td>
+										<td className="p-2 border-t border-amber-100">{outCoords ? (
+											<a className="text-amber-800 underline" target="_blank" rel="noreferrer" href={`https://maps.google.com/?q=${outCoords[1]},${outCoords[0]}`}>
+												{outCoords[1].toFixed(4)}, {outCoords[0].toFixed(4)}{cities[outKey] ? ` · ${cities[outKey]}` : ''}
+											</a>
+										) : '-'}</td>
+										<td className="p-2 border-t border-amber-100">{r.dailyReport?.text || '-'}</td>
+									</tr>
+								);
+							})
+						)}
 					</tbody>
 				</table>
                 <div className="flex justify-between items-center mt-3">
