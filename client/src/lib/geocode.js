@@ -1,6 +1,7 @@
 export const geocodeCache = new Map();
 
 export async function reverseGeocode(lat, lon) {
+	if (typeof lat !== 'number' || typeof lon !== 'number' || Number.isNaN(lat) || Number.isNaN(lon)) return 'Unknown';
 	const key = `${lat.toFixed(4)},${lon.toFixed(4)}`;
 	if (geocodeCache.has(key)) return geocodeCache.get(key);
 	try {

@@ -640,11 +640,11 @@ export default function PayrollPage() {
 							</div>
 							<div className="p-3 border border-amber-200 rounded">
 								<div className="text-sm opacity-70">Deduction</div>
-								<div className="text-xl font-semibold">{monthly.deduction.toFixed(2)}</div>
+								<div className="text-xl font-semibold">{typeof monthly?.deduction === 'number' ? monthly.deduction.toFixed(2) : '-'}</div>
 							</div>
 							<div className="p-3 border border-amber-200 rounded md:col-span-3">
 								<div className="text-sm opacity-70">Payable</div>
-								<div className="text-2xl font-bold">{monthly.payable.toFixed(2)}</div>
+								<div className="text-2xl font-bold">{typeof monthly?.payable === 'number' ? monthly.payable.toFixed(2) : '-'}</div>
 							</div>
 							{(monthly.allowedPerType?.length || monthly.usedPerType?.length) ? (
 								<div className="md:col-span-3">

@@ -48,6 +48,27 @@ app.use('/uploads', express.static(uploadDir));
 
 app.use('/api', apiRouter);
 
+// SPA fallback: serve frontend for non-API GET requests (e.g. /attendance, /login)
+// so that opening the backend URL with a path still loads the app.
+const clientDir = path.resolve(process.cwd(), 'public');
+const clientIndex = path.join(clientDir, 'index.html');
+if (fs.existsSync(clientIndex)) {
+	app.use(express.static(clientDir));
+	app.get('*', (req, res, next) => {
+		if (req.method !== 'GET') return next();
+		if (req.path.startsWith('/api') || req.path.startsWith('/uploads') || req.path === '/health') return next();
+		res.sendFile(clientIndex);
+	});
+} else {
+	// No built client: return 404 with message for unknown paths
+	app.get('/attendance', (_req, res) => {
+		res.status(404).json({
+			error: 'Not found',
+			message: 'This is the API. Use GET /api/attendance/me or GET /api/attendance/company. If you meant the app, open the frontend URL.',
+		});
+	});
+}
+
 async function ensureIndexes() {
 	try {
 		// Fix Attendance indexes

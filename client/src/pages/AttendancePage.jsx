@@ -168,7 +168,9 @@ export default function AttendancePage() {
 							{checkedIn ? 'Check out' : 'Check in'}
 						</button>
 						{checkedIn && <div className="text-amber-900 font-mono">Timer: {format(elapsed)}</div>}
-						{coords && <div className="text-sm opacity-70">Location: {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}{city?` · ${city}`:''}</div>}
+						{coords && typeof coords.latitude === 'number' && typeof coords.longitude === 'number' && (
+					<div className="text-sm opacity-70">Location: {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}{city ? ` · ${city}` : ''}</div>
+				)}
 					</div>
 					<div>
 						<textarea 
