@@ -99,41 +99,47 @@ export default function AttendancePage() {
 		if (timerRef.current) clearInterval(timerRef.current);
 	}
 
+	function getLocationErrorMessage(apiError) {
+		if (!apiError) return 'Action failed';
+		const lower = String(apiError).toLowerCase();
+		if (lower.includes('company location not configured') || lower.includes('not configured')) return 'Company ki location abhi set nahi hai. Administrator se contact karein.';
+		if (lower.includes('outside') || lower.includes('allowed location')) return 'Aap office ki allowed location se bahar hain. Check-in/check-out ke liye office aayein.';
+		if (lower.includes('lon') && lower.includes('lat') || lower.includes('location')) return 'Location required. Location enable karke dubara try karein.';
+		return apiError;
+	}
+
 	async function toggle() {
 		setMsg(''); setErrMsg('');
 		try {
 			const pos = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject));
 			const { longitude, latitude } = pos.coords;
 			setCoords({ longitude, latitude });
-            reverseGeocode(latitude, longitude).then(setCity).catch(()=>{});
+			reverseGeocode(latitude, longitude).then(setCity).catch(() => {});
 			if (!checkedIn) {
-				const res = await (await import('../services/attendance.js')).checkIn(longitude, latitude);
+				await (await import('../services/attendance.js')).checkIn(longitude, latitude);
 				setCheckedIn(true);
 				startRef.current = Date.now();
 				startTimer();
-				setMsg(res?.alert ? `Checked in (Alert: ${res.alert})` : 'Checked in');
+				setMsg('Checked in successfully. Aap office location par hain.');
 			} else {
-				// Validate report before attempting check-out
 				if (!report || report.trim().length === 0) {
-					setErrMsg('Daily report is required to check out. Please provide a report.');
+					setErrMsg('Daily report required. Check-out se pehle report likhein.');
 					return;
 				}
-				const res = await (await import('../services/attendance.js')).checkOut(report, longitude, latitude);
+				await (await import('../services/attendance.js')).checkOut(report, longitude, latitude);
 				setCheckedIn(false);
 				setReport('');
 				stopTimer();
-				setMsg(res?.status === 'FLAGGED' ? 'Checked out (Alert: outside allowed location)' : 'Checked out');
+				setMsg('Checked out successfully.');
 			}
 			const { getMyAttendance } = await import('../services/attendance.js');
 			const data = await getMyAttendance();
 			setRecent(data);
-            setPage(1);
+			setPage(1);
 		} catch (e) {
-			const err = e?.response?.data?.error || 'Action failed';
+			const apiError = e?.response?.data?.error;
+			const err = getLocationErrorMessage(apiError);
 			setErrMsg(err);
-			if (String(err).toLowerCase().includes('outside allowed')) {
-				alert('You are outside the allowed location for check-in/out.');
-			}
 		}
 	}
 
@@ -157,6 +163,9 @@ export default function AttendancePage() {
 			{errMsg && <div className="text-red-800 bg-red-50 border border-red-200 rounded p-2">{errMsg}</div>}
 			{(['EMPLOYEE','SUPERVISOR'].includes(userRole)) ? (
 				<>
+					<div className="bg-amber-50 border border-amber-200 rounded p-3 text-sm text-amber-900">
+						<strong>Location rule:</strong> Agar company ki location admin ne set ki hai (Settings → Company Location), to check-in/check-out sirf usi office location se hi hoga. Agar location set nahi hai to aap kahi se bhi check-in/check-out kar sakte hain.
+					</div>
 					<div className="flex items-center gap-4">
 						<button 
 							className={`px-3 py-2 rounded ${checkedIn && (!report || report.trim().length === 0) 
