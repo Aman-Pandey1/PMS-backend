@@ -70,12 +70,14 @@ export async function checkOut(req, res) {
 	const userId = req.user.uid;
 	const companyId = req.user.companyId;
 	if (!companyId) return res.status(400).json({ error: 'User is not associated with a company' });
-	const { report, lon, lat } = req.body || {};
-	const date = dayjs().format('YYYY-MM-DD');
-	const rec = await Attendance.findOne({ userId, date });
+	const { report, lon, lat, workReport } = req.body || {};
+	// Find latest OPEN record (any date) so check-out works even if server date rolled over
+	const rec = await Attendance.findOne({ userId, status: 'OPEN' }).sort({ date: -1 });
 	if (!rec) return res.status(404).json({ error: 'No open attendance' });
-	if (!report || typeof report !== 'string' || report.trim().length === 0) {
-		return res.status(400).json({ error: 'Daily report is required. Please provide a report before checking out.' });
+	const reportText = typeof report === 'string' ? report.trim() : '';
+	const hasWorkReport = workReport && (workReport.additionalNote?.trim() || (Array.isArray(workReport.tasks) && workReport.tasks.some(t => t && (t.task || t.note))));
+	if (!reportText && !hasWorkReport) {
+		return res.status(400).json({ error: 'Daily report is required. Please provide a report or work report before checking out.' });
 	}
 	// Check-out bhi sirf company location se hi allow - same as check-in
 	if (lon === undefined || lat === undefined) {
@@ -84,7 +86,12 @@ export async function checkOut(req, res) {
 	const company = await Company.findById(companyId).lean();
 	const geo = isInsideCompanyGeofence(company, lon, lat);
 	if (!geo.allowed) return res.status(403).json({ error: geo.error });
-	rec.dailyReport = { submitted: true, text: report };
+	rec.dailyReport = {
+		submitted: true,
+		text: reportText || (workReport?.additionalNote || '').trim() || 'Work report submitted',
+		additionalNote: (workReport?.additionalNote || '').trim() || undefined,
+		tasks: Array.isArray(workReport?.tasks) ? workReport.tasks.filter(t => t && (t.task || t.note)).map(t => ({ task: String(t.task || ''), note: String(t.note || '') })) : undefined,
+	};
 	rec.checkOutAt = new Date();
 	rec.checkOutLocation = { type: 'Point', coordinates: [lon, lat] };
 	rec.status = 'CLOSED';
@@ -104,6 +111,7 @@ export async function companyAttendance(req, res) {
 	const companyIdParam = req.query.companyId;
 	const companyId = isSuper && companyIdParam ? companyIdParam : req.user.companyId;
 	if (isSuper && !companyId) return res.status(400).json({ error: 'companyId required' });
+	if (!isSuper && !companyId) return res.status(400).json({ error: 'User is not associated with a company' });
 	const { start, end, userId } = req.query || {};
 	const where = { companyId };
 	if (userId) where.userId = userId;

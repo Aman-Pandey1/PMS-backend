@@ -10,7 +10,12 @@ const attendanceSchema = new Schema({
 	checkInLocation: { type: { type: String, enum: ['Point'], default: 'Point' }, coordinates: { type: [Number], required: true } },
 	checkOutAt: { type: Date },
 	checkOutLocation: { type: { type: String, enum: ['Point'], default: 'Point' }, coordinates: { type: [Number] } },
-	dailyReport: { submitted: { type: Boolean, default: false }, text: { type: String } },
+	dailyReport: {
+		submitted: { type: Boolean, default: false },
+		text: { type: String },
+		additionalNote: { type: String },
+		tasks: [{ task: { type: String }, note: { type: String } }],
+	},
 	status: { type: String, enum: ['OPEN', 'CLOSED', 'FLAGGED'], default: 'OPEN' },
 }, { timestamps: true });
 

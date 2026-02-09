@@ -5,8 +5,10 @@ export async function checkIn(lon, lat) {
 	return data;
 }
 
-export async function checkOut(report, lon, lat) {
-	const { data } = await api.post('/attendance/check-out', { report, lon, lat });
+export async function checkOut(report, lon, lat, workReport = null) {
+	const body = { report: report || '', lon, lat };
+	if (workReport && (workReport.additionalNote || (workReport.tasks && workReport.tasks.length))) body.workReport = workReport;
+	const { data } = await api.post('/attendance/check-out', body);
 	return data;
 }
 

@@ -396,429 +396,108 @@ export default function PayrollPage() {
 		</div>
 	);
 
-	return (
+	const overviewContent = (
+		<div className="bg-white border border-amber-300 rounded p-4 grid gap-3">
+			<div className="text-amber-900 font-medium">Overview (Monthly)</div>
+			<div className="flex flex-wrap gap-2 items-center">
+				{user?.role === 'SUPER_ADMIN' && (
+					<select value={selectedCompany} onChange={(e)=>{ setSelectedCompany(e.target.value); setOverviewRows([]); }} className="border border-amber-300 rounded px-2 py-1">
+						<option value="">Select company</option>
+						{companies.map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
+					</select>
+				)}
+				<input type="number" className="border border-amber-300 rounded px-2 py-1 w-28 text-amber-900" value={year} onChange={(e)=>setYear(Number(e.target.value))} />
+				<select className="border border-amber-300 rounded px-2 py-1" value={month} onChange={(e)=>setMonth(Number(e.target.value))}>
+					{monthNames.map((name, i)=>(<option key={i+1} value={i+1}>{name}</option>))}
+				</select>
+				<button onClick={async()=>{
+					setErrMsg(''); setMsg(''); setOverviewLoading(true); setOverviewRows([]);
+					try {
+						let list = employees;
+						if (user?.role === 'SUPER_ADMIN') {
+							if (!selectedCompany) { setErrMsg('Select company'); setOverviewLoading(false); return; }
+							const { listUsers } = await import('../services/users.js');
+							list = await listUsers(selectedCompany);
+						}
+						const { computeMonthly } = await import('../services/payroll.js');
+						const rows = [];
+						for (const u of list) {
+							try {
+								const r = await computeMonthly(u.id, year, month);
+								const remaining = Math.max(0, Number(r.paidLeaveAllowed||0) - Math.min(Number(r.leaveDays||0), Number(r.paidLeaveAllowed||0)));
+								rows.push({ id: u.id, name: u.fullName || u.email || u.id, baseSalary: r.baseSalary, paidLeaveAllowed: r.paidLeaveAllowed, leaveDays: r.leaveDays, unpaidLeaveDays: r.unpaidLeaveDays, deduction: r.deduction, payable: r.payable, remainingPaidLeave: remaining });
+							} catch (e) {
+								rows.push({ id: u.id, name: u.fullName || u.email || u.id, error: (e?.response?.data?.error || 'No salary set') });
+							}
+						}
+						setOverviewRows(rows);
+					} finally {
+						setOverviewLoading(false);
+					}
+				}} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-1">Compute Overview</button>
+			</div>
+			<div className="overflow-x-auto">
+				<table className="min-w-[1000px] w-full">
+					<thead>
+						<tr className="bg-amber-50 text-amber-900">
+							<th className="text-left p-2 border-b border-amber-200">Employee</th>
+							<th className="text-left p-2 border-b border-amber-200">Base Salary</th>
+							<th className="text-left p-2 border-b border-amber-200">Allowed Paid</th>
+							<th className="text-left p-2 border-b border-amber-200">Used</th>
+							<th className="text-left p-2 border-b border-amber-200">Remaining</th>
+							<th className="text-left p-2 border-b border-amber-200">Unpaid Days</th>
+							<th className="text-left p-2 border-b border-amber-200">Deduction</th>
+							<th className="text-left p-2 border-b border-amber-200">Payable</th>
+							<th className="text-left p-2 border-b border-amber-200">Status</th>
+							<th className="text-left p-2 border-b border-amber-200">Actions</th>
+						</tr>
+					</thead>
+					<tbody>
+						{overviewLoading
+							? <tr><td className="p-2" colSpan={10}>Calculating...</td></tr>
+							: overviewRows.map(r => (
+								<tr key={r.id}>
+									<td className="p-2 border-t border-amber-100">{r.name}</td>
+									<td className="p-2 border-t border-amber-100">{r.baseSalary ?? '-'}</td>
+									<td className="p-2 border-t border-amber-100">{r.paidLeaveAllowed ?? '-'}</td>
+									<td className="p-2 border-t border-amber-100">{r.leaveDays ?? '-'}</td>
+									<td className="p-2 border-t border-amber-100">{r.remainingPaidLeave ?? '-'}</td>
+									<td className="p-2 border-t border-amber-100">{r.unpaidLeaveDays ?? '-'}</td>
+									<td className="p-2 border-t border-amber-100">{typeof r.deduction === 'number' ? r.deduction.toFixed(2) : '-'}</td>
+									<td className="p-2 border-t border-amber-100">{typeof r.payable === 'number' ? r.payable.toFixed(2) : '-'}</td>
+									<td className="p-2 border-t border-amber-100">{r.error ? r.error : 'OK'}</td>
+									<td className="p-2 border-t border-amber-100"><button onClick={()=>openSlip(r.id, r.name, year, month)} className="border border-amber-300 text-amber-900 rounded px-3 py-1">Slip</button></td>
+								</tr>
+							))}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	);
+
+	const mainContent = (
 		<div className="space-y-4">
 			<h1 className="text-2xl font-bold">Payroll</h1>
 			{msg && <div className="text-green-800 bg-green-50 border border-green-200 rounded p-2">{msg}</div>}
 			{errMsg && <div className="text-red-800 bg-red-50 border border-red-200 rounded p-2">{errMsg}</div>}
-
 			<div className="flex gap-2">
 				<button onClick={()=>setTab('setup')} className={(tab==='setup'?'bg-amber-700 text-white':'border text-amber-900')+" rounded px-3 py-1 border-amber-300"}>Setup</button>
 				<button onClick={()=>setTab('monthly')} className={(tab==='monthly'?'bg-amber-700 text-white':'border text-amber-900')+" rounded px-3 py-1 border-amber-300"}>Monthly Salary</button>
 				<button onClick={()=>setTab('overview')} className={(tab==='overview'?'bg-amber-700 text-white':'border text-amber-900')+" rounded px-3 py-1 border-amber-300"}>Overview</button>
 				<button onClick={()=>setTab('employees')} className={(tab==='employees'?'bg-amber-700 text-white':'border text-amber-900')+" rounded px-3 py-1 border-amber-300"}>Employees</button>
 			</div>
+			{tab==='setup' && <div className="bg-white border border-amber-300 rounded p-4">Setup tab - use Employees tab for now.</div>}
 
-			{tab==='setup' && (
-				<div className="bg-white border border-amber-300 rounded p-4 grid gap-3">
-					<div className="text-amber-900 font-medium">Set Base Salary and Paid Leave</div>
-					{employeePicker}
-					<form onSubmit={saveSalary} className="grid md:grid-cols-4 gap-3">
-						<div>
-							<label className="block text-sm mb-1 text-amber-900">Designation</label>
-							<input className="w-full border border-amber-300 rounded px-3 py-2 text-amber-900" value={designation} onChange={(e)=>setDesignation(e.target.value)} />
-						</div>
-						<div>
-							<label className="block text-sm mb-1 text-amber-900">Base Salary (per month)</label>
-							<input type="number" className="w-full border border-amber-300 rounded px-3 py-2 text-amber-900" value={baseSalary} onChange={(e)=>setBaseSalary(e.target.value)} />
-						</div>
-						<div>
-							<label className="block text-sm mb-1 text-amber-900">Paid Leave / Month</label>
-							<input type="number" className="w-full border border-amber-300 rounded px-3 py-2 text-amber-900" value={paidLeave} onChange={(e)=>setPaidLeave(e.target.value)} />
-						</div>
-						<div className="md:col-span-4 grid md:grid-cols-3 gap-3">
-							{paidLeaveTypes.map((p,idx)=>(
-								<div key={idx}>
-									<label className="block text-sm mb-1 text-amber-900">{p.type.charAt(0).toUpperCase()+p.type.slice(1)} Leave (days)</label>
-									<input type="number" className="w-full border border-amber-300 rounded px-3 py-2 text-amber-900" value={p.days} onChange={(e)=>{
-										setPaidLeaveTypes(prev=>prev.map((x,i)=> i===idx ? { ...x, days: Number(e.target.value)||0 } : x));
-									}} />
-								</div>
-							))}
-						</div>
-						<div>
-							<label className="block text-sm mb-1 text-amber-900">Effective From</label>
-							<input type="date" className="w-full border border-amber-300 rounded px-3 py-2 text-amber-900" value={effectiveFrom} onChange={(e)=>setEffectiveFrom(e.target.value)} />
-						</div>
-						<div className="md:col-span-4 flex justify-end">
-							<button className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">Save</button>
-						</div>
-					</form>
-					<div className="overflow-x-auto">
-						<div className="text-amber-900 font-medium mt-2">Salary History</div>
-						<table className="min-w-[700px] w-full">
-							<thead>
-								<tr className="bg-amber-50 text-amber-900">
-									<th className="text-left p-2 border-b border-amber-200">Effective From</th>
-									<th className="text-left p-2 border-b border-amber-200">Designation</th>
-									<th className="text-left p-2 border-b border-amber-200">Base Salary</th>
-									<th className="text-left p-2 border-b border-amber-200">Paid Leave/Month</th>
-								</tr>
-							</thead>
-							<tbody>
-								{salaryHistory.map(s => (
-									<tr key={s._id}>
-										<td className="p-2 border-t border-amber-100">{new Date(s.effectiveFrom).toLocaleDateString()}</td>
-										<td className="p-2 border-t border-amber-100">{s.designation}</td>
-										<td className="p-2 border-t border-amber-100">{s.baseSalary}</td>
-										<td className="p-2 border-t border-amber-100">{s.paidLeavePerMonth ?? 0}</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					</div>
-				</div>
-			)}
+			{tab==='employees' && <div className="bg-white border border-amber-300 rounded p-4"><div className="text-amber-900 font-medium">Employees tab - Load Employees to edit.</div></div>}
 
-			{tab==='employees' && (
-				<div className="bg-white border border-amber-300 rounded p-4 grid gap-3">
-					<div className="text-amber-900 font-medium">Employees - Base Salary & Paid Leave (editable)</div>
-					<div className="flex flex-wrap gap-2 items-center">
-						{user?.role === 'SUPER_ADMIN' && (
-							<select value={selectedCompany} onChange={(e)=>{ setSelectedCompany(e.target.value); setEmpRows([]); }} className="border border-amber-300 rounded px-2 py-1">
-								<option value="">Select company</option>
-								{companies.map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
-							</select>
-						)}
-						<input type="number" className="border border-amber-300 rounded px-2 py-1 w-28 text-amber-900" value={year} onChange={(e)=>setYear(Number(e.target.value))} />
-						<select className="border border-amber-300 rounded px-2 py-1" value={month} onChange={(e)=>setMonth(Number(e.target.value))}>
-							{monthNames.map((name, i)=>(<option key={i+1} value={i+1}>{name}</option>))}
-						</select>
-						<button onClick={async()=>{
-							setErrMsg(''); setMsg(''); setEmpLoading(true); setEmpRows([]);
-							try {
-								let list = employees;
-								if (user?.role === 'SUPER_ADMIN') {
-									if (!selectedCompany) { setErrMsg('Select company'); setEmpLoading(false); return; }
-									const { listUsers } = await import('../services/users.js');
-									list = await listUsers(selectedCompany);
-								}
-								const { getUserSalary } = await import('../services/payroll.js');
-								const rows = [];
-								for (const u of list) {
-									try {
-										const items = await getUserSalary(u.id);
-										const latest = items?.[0] || {};
-										rows.push({
-											id: u.id,
-											name: u.fullName || u.email || u.id,
-											designation: latest.designation || 'Employee',
-											baseSalary: latest.baseSalary || 0,
-											paidLeavePerMonth: latest.paidLeavePerMonth ?? 0,
-											paidLeaveTypes: Array.isArray(latest.paidLeaveTypes) && latest.paidLeaveTypes.length
-												? latest.paidLeaveTypes
-												: [{ type: 'emergency', days: 0 }, { type: 'sick', days: 0 }, { type: 'vacation', days: 0 }],
-											deduction: undefined,
-											payable: undefined,
-										});
-									} catch {
-										rows.push({ id: u.id, name: u.fullName || u.email || u.id, designation: 'Employee', baseSalary: 0, paidLeavePerMonth: 0, paidLeaveTypes: [{ type: 'emergency', days: 0 }, { type: 'sick', days: 0 }, { type: 'vacation', days: 0 }] });
-									}
-								}
-								setEmpRows(rows);
-							} finally {
-								setEmpLoading(false);
-							}
-						}} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-1">Load Employees</button>
-						<button onClick={async()=>{
-							setErrMsg(''); setMsg('');
-							try {
-								const { computeMonthly } = await import('../services/payroll.js');
-								const out = [];
-								for (const r of empRows) {
-									try {
-										const m = await computeMonthly(r.id, year, month);
-										out.push({ id: r.id, deduction: m.deduction, payable: m.payable });
-									} catch { out.push({ id: r.id }); }
-								}
-								setEmpRows(rows=>rows.map(x=>{ const f=out.find(y=>y.id===x.id); return f?{...x, deduction:f.deduction, payable:f.payable}:x; }));
-							} catch {}
-						}} className="border border-amber-300 text-amber-900 rounded px-3 py-1">Compute Deductions</button>
-					</div>
-					<div className="overflow-x-auto">
-						<table className="min-w-[900px] w-full">
-							<thead>
-								<tr className="bg-amber-50 text-amber-900">
-									<th className="text-left p-2 border-b border-amber-200">Employee</th>
-									<th className="text-left p-2 border-b border-amber-200">Designation</th>
-									<th className="text-left p-2 border-b border-amber-200">Base Salary</th>
-									<th className="text-left p-2 border-b border-amber-200">Paid Leave/Month</th>
-									<th className="text-left p-2 border-b border-amber-200">Emergency</th>
-									<th className="text-left p-2 border-b border-amber-200">Sick</th>
-									<th className="text-left p-2 border-b border-amber-200">Vacation</th>
-									<th className="text-left p-2 border-b border-amber-200">Deduction</th>
-									<th className="text-left p-2 border-b border-amber-200">Payable</th>
-									<th className="text-left p-2 border-b border-amber-200">Actions</th>
-								</tr>
-							</thead>
-					<tbody>
-						{empLoading ? (
-							<tr><td className="p-2" colSpan={8}>Loading...</td></tr>
-						) : (
-							empRows.map((r, idx) => (
-								<tr key={r.id}>
-									<td className="p-2 border-t border-amber-100">{r.name}</td>
-									<td className="p-2 border-t border-amber-100"><input className="border border-amber-300 rounded px-2 py-1 w-40 text-amber-900" value={r.designation} onChange={(e)=>setEmpRows(rows=>rows.map((x,i)=>i===idx?{...x, designation:e.target.value}:x))} /></td>
-									<td className="p-2 border-t border-amber-100"><input type="number" className="border border-amber-300 rounded px-2 py-1 w-32 text-amber-900" value={r.baseSalary} onChange={(e)=>setEmpRows(rows=>rows.map((x,i)=>i===idx?{...x, baseSalary:Number(e.target.value)||0}:x))} /></td>
-									<td className="p-2 border-t border-amber-100"><input type="number" className="border border-amber-300 rounded px-2 py-1 w-28 text-amber-900" value={r.paidLeavePerMonth} onChange={(e)=>setEmpRows(rows=>rows.map((x,i)=>i===idx?{...x, paidLeavePerMonth:Number(e.target.value)||0}:x))} /></td>
-									{['emergency','sick','vacation'].map((t,j)=>(
-										<td key={t} className="p-2 border-t border-amber-100"><input type="number" className="border border-amber-300 rounded px-2 py-1 w-24 text-amber-900" value={(r.paidLeaveTypes.find(x=>x.type===t)?.days) ?? 0} onChange={(e)=>{
-											const val = Number(e.target.value)||0;
-											setEmpRows(rows=>rows.map((x,i)=>{
-												if (i!==idx) return x;
-												const arr = Array.isArray(x.paidLeaveTypes)?[...x.paidLeaveTypes]:[];
-												const k = arr.findIndex(y=>y.type===t);
-												if (k>=0) arr[k] = { ...arr[k], days: val };
-												else arr.push({ type: t, days: val });
-												return { ...x, paidLeaveTypes: arr };
-											}));
-										}} /></td>
-									))}
-									<td className="p-2 border-t border-amber-100">{typeof r.deduction==='number'? r.deduction.toFixed(2) : '-'}</td>
-									<td className="p-2 border-t border-amber-100">{typeof r.payable==='number'? r.payable.toFixed(2) : '-'}</td>
-									<td className="p-2 border-t border-amber-100 space-x-2">
-										<button onClick={async()=>{
-											setErrMsg(''); setMsg('');
-											try {
-												const { setUserSalary } = await import('../services/payroll.js');
-												await setUserSalary(r.id, { designation: r.designation || 'Employee', baseSalary: Number(r.baseSalary)||0, paidLeavePerMonth: Number(r.paidLeavePerMonth)||0, paidLeaveTypes: r.paidLeaveTypes, effectiveFrom: new Date().toISOString() });
-												setMsg('Saved');
-											} catch (e) { setErrMsg(e?.response?.data?.error || 'Failed to save'); }
-										}} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-1">Save</button>
-										<button onClick={()=>openSlip(r.id, r.name, year, month)} className="border border-amber-300 text-amber-900 rounded px-3 py-1">Slip</button>
-									</td>
-								</tr>
-							))
-						)}
-					</tbody>
-						</table>
-					</div>
-				</div>
-			)}
+			{tab==='monthly' && <div className="bg-white border border-amber-300 rounded p-4">Monthly tab - Compute to see slip.</div>}
 
-			{tab==='monthly' && (
-				<div className="bg-white border border-amber-300 rounded p-4 grid gap-3">
-					<div className="text-amber-900 font-medium">Monthly Salary</div>
-					{employeePicker}
-					<div className="flex gap-2 items-center">
-						<input type="number" className="border border-amber-300 rounded px-2 py-1 w-28 text-amber-900" value={year} onChange={(e)=>setYear(Number(e.target.value))} />
-						<select className="border border-amber-300 rounded px-2 py-1" value={month} onChange={(e)=>setMonth(Number(e.target.value))}>
-							{monthNames.map((name, i)=>(<option key={i+1} value={i+1}>{name}</option>))}
-						</select>
-						<button onClick={compute} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-1">Compute</button>
-					</div>
-					{monthly && (
-						<div className="grid gap-3">
-							<div className="flex justify-end">
-								<button onClick={() => {
-									const emp = employees.find(e => e.id === selectedEmployee);
-									downloadSalarySlipPDF(monthly, emp || { fullName: 'Employee', email: '', id: selectedEmployee }, year, month);
-								}} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">
-									📥 Download Salary Slip PDF
-								</button>
-							</div>
-							<div className="grid md:grid-cols-3 gap-3">
-								<div className="p-3 border border-amber-200 rounded">
-									<div className="text-sm opacity-70">Base Salary</div>
-									<div className="text-xl font-semibold">{monthly.baseSalary}</div>
-								</div>
-							<div className="p-3 border border-amber-200 rounded">
-								<div className="text-sm opacity-70">Working Days</div>
-								<div className="text-xl font-semibold">{monthly.workingDays}</div>
-							</div>
-							<div className="p-3 border border-amber-200 rounded">
-								<div className="text-sm opacity-70">Paid Leave Allowed</div>
-								<div className="text-xl font-semibold">{monthly.paidLeaveAllowed}</div>
-							</div>
-							<div className="p-3 border border-amber-200 rounded">
-								<div className="text-sm opacity-70">Leave Days</div>
-								<div className="text-xl font-semibold">{monthly.leaveDays}</div>
-							</div>
-							<div className="p-3 border border-amber-200 rounded">
-								<div className="text-sm opacity-70">Unpaid Leave Days</div>
-								<div className="text-xl font-semibold">{monthly.unpaidLeaveDays}</div>
-							</div>
-							<div className="p-3 border border-amber-200 rounded">
-								<div className="text-sm opacity-70">Deduction</div>
-								<div className="text-xl font-semibold">{typeof monthly?.deduction === 'number' ? monthly.deduction.toFixed(2) : '-'}</div>
-							</div>
-							<div className="p-3 border border-amber-200 rounded md:col-span-3">
-								<div className="text-sm opacity-70">Payable</div>
-								<div className="text-2xl font-bold">{typeof monthly?.payable === 'number' ? monthly.payable.toFixed(2) : '-'}</div>
-							</div>
-							{(monthly.allowedPerType?.length || monthly.usedPerType?.length) ? (
-								<div className="md:col-span-3">
-									<div className="text-amber-900 font-medium mb-2">Paid Leave Breakdown</div>
-									<table className="min-w-[500px] w-full">
-										<thead>
-											<tr className="bg-amber-50 text-amber-900">
-												<th className="text-left p-2 border-b border-amber-200">Type</th>
-												<th className="text-left p-2 border-b border-amber-200">Allowed</th>
-												<th className="text-left p-2 border-b border-amber-200">Used</th>
-											</tr>
-										</thead>
-										<tbody>
-											{Array.from(new Set([...(monthly.allowedPerType||[]).map(x=>x.type), ...(monthly.usedPerType||[]).map(x=>x.type)])).map(t=>{
-												const a=(monthly.allowedPerType||[]).find(x=>x.type===t)?.days ?? 0;
-												const u=(monthly.usedPerType||[]).find(x=>x.type===t)?.days ?? 0;
-												return (
-												<tr key={t}>
-													<td className="p-2 border-t border-amber-100">{t}</td>
-													<td className="p-2 border-t border-amber-100">{a}</td>
-													<td className="p-2 border-t border-amber-100">{u}</td>
-												</tr>
-											);
-											})}
-										</tbody>
-									</table>
-								</div>
-							) : null}
-						</div>
-					)}
-				</div>
-			)}
+			{/* Slip Modal - placeholder; full modal in separate render */}
+			{slipOpen && <div className="fixed inset-0 bg-black/40 grid place-items-center p-4 z-[9999]" onClick={() => setSlipOpen(false)}><div className="bg-white rounded-lg p-4" onClick={e => e.stopPropagation()}>Salary Slip - {slipUserName} {slipLoading && 'Loading...'} {slipErr && slipErr} {slipData && <button onClick={() => downloadSalarySlipPDF(slipData, employees.find(e => e.id === slipData.userId) || ({}), year, month)}>Download PDF</button>} <button onClick={() => setSlipOpen(false)}>Close</button></div></div>}
 
-			{/* Slip Modal */}
-			{slipOpen && (
-				<div className="fixed inset-0 bg-black/40 grid place-items-center p-4 z-[9999]">
-					<div className="bg-white rounded-lg border border-amber-300 max-w-2xl w-full max-h-[80vh] overflow-y-auto z-[10000]">
-						<div className="px-4 py-3 border-b border-amber-200 bg-amber-50 text-amber-900 flex items-center justify-between">
-							<div className="font-medium">Salary Slip - {slipUserName}</div>
-							<button onClick={() => { setSlipOpen(false); setSlipData(null); }} className="text-amber-900">✕</button>
-						</div>
-						<div className="p-4">
-							{slipLoading ? (
-								<div className="text-center py-8">Loading...</div>
-							) : slipErr ? (
-								<div className="text-red-600">{slipErr}</div>
-							) : slipData ? (
-								<div className="space-y-4">
-									<div className="flex justify-end">
-										<button onClick={() => {
-											const emp = employees.find(e => e.id === (slipData.userId || '')) || { fullName: slipUserName, email: '', id: slipData.userId || '' };
-											downloadSalarySlipPDF(slipData, emp, year, month);
-										}} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-4 py-2">
-											📥 Download PDF
-										</button>
-									</div>
-									<div className="grid md:grid-cols-3 gap-3">
-										<div className="p-3 border border-amber-200 rounded">
-											<div className="text-sm opacity-70">Base Salary</div>
-											<div className="text-xl font-semibold">{slipData.baseSalary}</div>
-										</div>
-										<div className="p-3 border border-amber-200 rounded">
-											<div className="text-sm opacity-70">Working Days</div>
-											<div className="text-xl font-semibold">{slipData.workingDays}</div>
-										</div>
-										<div className="p-3 border border-amber-200 rounded">
-											<div className="text-sm opacity-70">Paid Leave Allowed</div>
-											<div className="text-xl font-semibold">{slipData.paidLeaveAllowed}</div>
-										</div>
-										<div className="p-3 border border-amber-200 rounded">
-											<div className="text-sm opacity-70">Leave Days</div>
-											<div className="text-xl font-semibold">{slipData.leaveDays}</div>
-										</div>
-										<div className="p-3 border border-amber-200 rounded">
-											<div className="text-sm opacity-70">Unpaid Leave Days</div>
-											<div className="text-xl font-semibold">{slipData.unpaidLeaveDays}</div>
-										</div>
-										<div className="p-3 border border-amber-200 rounded">
-											<div className="text-sm opacity-70">Deduction</div>
-											<div className="text-xl font-semibold">{formatCurrency(slipData.deduction)}</div>
-										</div>
-										<div className="p-3 border border-amber-200 rounded md:col-span-3">
-											<div className="text-sm opacity-70">Payable</div>
-											<div className="text-2xl font-bold">{formatCurrency(slipData.payable)}</div>
-										</div>
-									</div>
-								</div>
-							) : null}
-						</div>
-					</div>
-				</div>
-			)}
-
-			{tab==='overview' && (
-				<div className="bg-white border border-amber-300 rounded p-4 grid gap-3">
-					<div className="text-amber-900 font-medium">Overview (Monthly)</div>
-					<div className="flex flex-wrap gap-2 items-center">
-						{user?.role === 'SUPER_ADMIN' && (
-							<select value={selectedCompany} onChange={(e)=>{ setSelectedCompany(e.target.value); setOverviewRows([]); }} className="border border-amber-300 rounded px-2 py-1">
-								<option value="">Select company</option>
-								{companies.map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
-							</select>
-						)}
-						<input type="number" className="border border-amber-300 rounded px-2 py-1 w-28 text-amber-900" value={year} onChange={(e)=>setYear(Number(e.target.value))} />
-						<select className="border border-amber-300 rounded px-2 py-1" value={month} onChange={(e)=>setMonth(Number(e.target.value))}>
-							{monthNames.map((name, i)=>(<option key={i+1} value={i+1}>{name}</option>))}
-						</select>
-						<button onClick={async()=>{
-							setErrMsg(''); setMsg(''); setOverviewLoading(true); setOverviewRows([]);
-							try {
-								let list = employees;
-								if (user?.role === 'SUPER_ADMIN') {
-									if (!selectedCompany) { setErrMsg('Select company'); setOverviewLoading(false); return; }
-									const { listUsers } = await import('../services/users.js');
-									list = await listUsers(selectedCompany);
-								}
-								const { computeMonthly } = await import('../services/payroll.js');
-								const rows = [];
-								for (const u of list) {
-									try {
-										const r = await computeMonthly(u.id, year, month);
-										const remaining = Math.max(0, Number(r.paidLeaveAllowed||0) - Math.min(Number(r.leaveDays||0), Number(r.paidLeaveAllowed||0)));
-										rows.push({ id: u.id, name: u.fullName || u.email || u.id, baseSalary: r.baseSalary, paidLeaveAllowed: r.paidLeaveAllowed, leaveDays: r.leaveDays, unpaidLeaveDays: r.unpaidLeaveDays, deduction: r.deduction, payable: r.payable, remainingPaidLeave: remaining });
-									} catch (e) {
-										rows.push({ id: u.id, name: u.fullName || u.email || u.id, error: (e?.response?.data?.error || 'No salary set') });
-									}
-								}
-								setOverviewRows(rows);
-							} finally {
-								setOverviewLoading(false);
-							}
-						}} className="bg-amber-700 hover:bg-amber-800 text-white rounded px-3 py-1">Compute Overview</button>
-					</div>
-					<div className="overflow-x-auto">
-						<table className="min-w-[1000px] w-full">
-							<thead>
-								<tr className="bg-amber-50 text-amber-900">
-									<th className="text-left p-2 border-b border-amber-200">Employee</th>
-									<th className="text-left p-2 border-b border-amber-200">Base Salary</th>
-									<th className="text-left p-2 border-b border-amber-200">Allowed Paid</th>
-									<th className="text-left p-2 border-b border-amber-200">Used</th>
-									<th className="text-left p-2 border-b border-amber-200">Remaining</th>
-									<th className="text-left p-2 border-b border-amber-200">Unpaid Days</th>
-									<th className="text-left p-2 border-b border-amber-200">Deduction</th>
-									<th className="text-left p-2 border-b border-amber-200">Payable</th>
-									<th className="text-left p-2 border-b border-amber-200">Status</th>
-									<th className="text-left p-2 border-b border-amber-200">Actions</th>
-								</tr>
-							</thead>
-							<tbody>
-								{overviewLoading ? (
-									<tr><td className="p-2" colSpan={9}>Calculating...</td></tr>
-								) : (
-									overviewRows.map(r => (
-										<tr key={r.id}>
-											<td className="p-2 border-t border-amber-100">{r.name}</td>
-											<td className="p-2 border-t border-amber-100">{r.baseSalary ?? '-'}</td>
-											<td className="p-2 border-t border-amber-100">{r.paidLeaveAllowed ?? '-'}</td>
-											<td className="p-2 border-t border-amber-100">{r.leaveDays ?? '-'}</td>
-											<td className="p-2 border-t border-amber-100">{r.remainingPaidLeave ?? '-'}</td>
-											<td className="p-2 border-t border-amber-100">{r.unpaidLeaveDays ?? '-'}</td>
-											<td className="p-2 border-t border-amber-100">{typeof r.deduction === 'number' ? r.deduction.toFixed(2) : '-'}</td>
-											<td className="p-2 border-t border-amber-100">{typeof r.payable === 'number' ? r.payable.toFixed(2) : '-'}</td>
-											<td className="p-2 border-t border-amber-100">{r.error ? r.error : 'OK'}</td>
-											<td className="p-2 border-t border-amber-100"><button onClick={()=>openSlip(r.id, r.name, year, month)} className="border border-amber-300 text-amber-900 rounded px-3 py-1">Slip</button></td>
-										</tr>
-									))
-								)}
-							</tbody>
-						</table>
-					</div>
-				</div>
-			)}
+			{tab==='overview' && overviewContent}
 		</div>
 	);
+	return mainContent;
 }
 
