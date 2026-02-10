@@ -169,7 +169,7 @@ export default function AttendancePage() {
 				const hasReport = (additionalNote && additionalNote.trim().length > 0) ||
 					(taskNotes && taskNotes.some(n => n && String(n).trim().length > 0));
 				if (!hasReport) {
-					setErrMsg('Daily report required. Work report mein koi note ya Additional note likhein, phir Check out karein.');
+					setErrMsg('Daily report required. Please add at least one task note or additional note, then Check out.');
 					setLoading(false);
 					return;
 				}
@@ -259,9 +259,6 @@ export default function AttendancePage() {
 			{errMsg && <div className="text-red-800 bg-red-50 border border-red-200 rounded p-2">{errMsg}</div>}
 			{(['EMPLOYEE','SUPERVISOR'].includes(userRole)) ? (
 				<>
-					<div className="bg-amber-50 border border-amber-200 rounded p-3 text-sm text-amber-900">
-						<strong>Location rule:</strong> Agar company ki location admin ne set ki hai (Settings → Company Location), to check-in/check-out sirf usi office location se hi hoga. Agar location set nahi hai to aap kahi se bhi check-in/check-out kar sakte hain.
-					</div>
 					<div className="flex items-center gap-4 flex-wrap">
 						<button 
 							className="px-3 py-2 rounded bg-amber-700 hover:bg-amber-800 text-white disabled:opacity-70 disabled:cursor-not-allowed"
@@ -343,7 +340,7 @@ export default function AttendancePage() {
 								/>
 							</div>
 							{(!additionalNote || !additionalNote.trim()) && (!taskNotes || !taskNotes.some(n => n && String(n).trim())) && (
-								<div className="text-red-600 text-sm px-3 py-2 bg-red-50 border-t border-red-100">⚠️ Koi bhi task note ya Additional note likhein, phir Check out karein.</div>
+								<div className="text-red-600 text-sm px-3 py-2 bg-red-50 border-t border-red-100">⚠️ Please add at least one task note or additional note, then Check out.</div>
 							)}
 						</div>
 					)}

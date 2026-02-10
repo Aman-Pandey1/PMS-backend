@@ -122,7 +122,7 @@ export async function companyAttendance(req, res) {
 	}
 	const items = await Attendance.find(where).sort({ date: -1 }).limit(500).lean();
 	const userIds = [...new Set(items.map(i => String(i.userId)))];
-	const users = await User.find({ _id: { $in: userIds } }).select('fullName email').lean();
+	const users = await User.find({ _id: { $in: userIds } }).select('fullName email jobPosition').lean();
 	const map = new Map(users.map(u => [String(u._id), u]));
 	const withUsers = items.map(i => ({ ...i, user: map.get(String(i.userId)) || null }));
 	res.json({ items: withUsers });

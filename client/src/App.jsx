@@ -14,6 +14,7 @@ import DocumentsPage from './pages/DocumentsPage.jsx';
 import NotificationsPage from './pages/NotificationsPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
 import AttendanceCompany from './pages/AttendanceCompany.jsx';
+import WorkReportsPage from './pages/WorkReportsPage.jsx';
 import HomePage from './pages/HomePage.jsx';
 import AboutPage from './pages/AboutPage.jsx';
 import ShopPage from './pages/ShopPage.jsx';
@@ -39,6 +40,7 @@ export default function App() {
 				<Route path="employees" element={<ProtectedRoute roles={['COMPANY_ADMIN','SUPER_ADMIN']}><EmployeesPage /></ProtectedRoute>} />
 				        <Route path="attendance" element={<ProtectedRoute roles={["EMPLOYEE","SUPERVISOR"]}><AttendancePage /></ProtectedRoute>} />
         <Route path="attendance/company" element={<ProtectedRoute roles={["COMPANY_ADMIN","SUPER_ADMIN","SUPERVISOR"]}><AttendanceCompany /></ProtectedRoute>} />
+				<Route path="attendance/work-reports" element={<ProtectedRoute roles={["COMPANY_ADMIN","SUPER_ADMIN","SUPERVISOR"]}><WorkReportsPage /></ProtectedRoute>} />
 				<Route path="leaves" element={<LeavesPage />} />
 				<Route path="tasks" element={<TasksPage />} />
 				<Route path="tasks/assign" element={<ProtectedRoute roles={["SUPERVISOR"]}><TaskAssign /></ProtectedRoute>} />

@@ -177,7 +177,10 @@ export default function DashboardLayout() {
 						</>
 					)}
 					{(user?.role === 'COMPANY_ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'SUPERVISOR') && (
-						<SidebarLink to="/attendance/company" label="Company Attendance" />
+						<>
+							<SidebarLink to="/attendance/company" label="Company Attendance" />
+							<SidebarLink to="/attendance/work-reports" label="Work Reports" />
+						</>
 					)}
 					<SidebarLink to="/leaves" label="Leaves" />
 					<SidebarLink to="/tasks" label="Tasks" />
