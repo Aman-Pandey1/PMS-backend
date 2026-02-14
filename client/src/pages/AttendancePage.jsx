@@ -8,11 +8,11 @@ export default function AttendancePage() {
 	const [openRecord, setOpenRecord] = useState(null); // current OPEN attendance for work report header
 	const [elapsed, setElapsed] = useState(0);
 	const [coords, setCoords] = useState(null);
-    const [city, setCity] = useState('');
+	const [city, setCity] = useState('');
 	const [msg, setMsg] = useState('');
 	const [errMsg, setErrMsg] = useState('');
-    const [page, setPage] = useState(1);
-    const pageSize = 10;
+	const [page, setPage] = useState(1);
+	const pageSize = 10;
 	const [cities, setCities] = useState({});
 	const [userRole, setUserRole] = useState(null);
 	const [userName, setUserName] = useState('');
@@ -151,7 +151,7 @@ export default function AttendancePage() {
 			});
 			const { longitude, latitude } = pos.coords;
 			setCoords({ longitude, latitude });
-			reverseGeocode(latitude, longitude).then(setCity).catch(() => {});
+			reverseGeocode(latitude, longitude).then(setCity).catch(() => { });
 			if (!checkedIn) {
 				await (await import('../services/attendance.js')).checkIn(longitude, latitude);
 				setCheckedIn(true);
@@ -164,7 +164,7 @@ export default function AttendancePage() {
 					setRecent(data);
 					setOpenRecord(data?.find(r => r.status === 'OPEN') || null);
 					setPage(1);
-				} catch (_) {}
+				} catch (_) { }
 			} else {
 				const hasReport = (additionalNote && additionalNote.trim().length > 0) ||
 					(taskNotes && taskNotes.some(n => n && String(n).trim().length > 0));
@@ -191,7 +191,7 @@ export default function AttendancePage() {
 					const data = await getMyAttendance();
 					setRecent(data);
 					setPage(1);
-				} catch (_) {}
+				} catch (_) { }
 			}
 		} catch (e) {
 			// Server not running / connection refused
@@ -217,7 +217,7 @@ export default function AttendancePage() {
 						setTaskNotes(prev => (prev.length !== WORK_REPORT_TASKS.length ? Array(WORK_REPORT_TASKS.length).fill('') : prev));
 						setMsg('Aap pehle se checked in hain. Neeche work report bhar kar Check out karein.');
 					}
-				} catch (_) {}
+				} catch (_) { }
 				setLoading(false);
 				return;
 			}
@@ -229,7 +229,7 @@ export default function AttendancePage() {
 				try {
 					const { getMyAttendance } = await import('../services/attendance.js');
 					setRecent(await getMyAttendance());
-				} catch (_) {}
+				} catch (_) { }
 			}
 			const isGeolocation = e?.code !== undefined && !e?.response;
 			const err = getLocationErrorMessage(apiError || (isGeolocation ? e : null), isGeolocation);
@@ -240,14 +240,14 @@ export default function AttendancePage() {
 	}
 
 	function format(sec) {
-		const h = String(Math.floor(sec/3600)).padStart(2,'0');
-		const m = String(Math.floor((sec%3600)/60)).padStart(2,'0');
-		const s = String(sec%60).padStart(2,'0');
+		const h = String(Math.floor(sec / 3600)).padStart(2, '0');
+		const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
+		const s = String(sec % 60).padStart(2, '0');
 		return `${h}:${m}:${s}`;
 	}
 
-    const totalPages = Math.max(1, Math.ceil(recent.length / pageSize));
-    const paged = recent.slice((page-1)*pageSize, (page-1)*pageSize + pageSize);
+	const totalPages = Math.max(1, Math.ceil(recent.length / pageSize));
+	const paged = recent.slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize);
 
 	// Super/Company admins should not see self check-in/out controls
 	const isSelfAttendanceVisible = true; // keep page but we'll hide actions below
@@ -257,10 +257,10 @@ export default function AttendancePage() {
 			<h1 className="text-2xl font-bold">Attendance</h1>
 			{msg && <div className="text-green-800 bg-green-50 border border-green-200 rounded p-2">{msg}</div>}
 			{errMsg && <div className="text-red-800 bg-red-50 border border-red-200 rounded p-2">{errMsg}</div>}
-			{(['EMPLOYEE','SUPERVISOR'].includes(userRole)) ? (
+			{(['EMPLOYEE', 'SUPERVISOR'].includes(userRole)) ? (
 				<>
 					<div className="flex items-center gap-4 flex-wrap">
-						<button 
+						<button
 							className="px-3 py-2 rounded bg-amber-700 hover:bg-amber-800 text-white disabled:opacity-70 disabled:cursor-not-allowed"
 							onClick={toggle}
 							type="button"
@@ -315,7 +315,7 @@ export default function AttendancePage() {
 											<td className="p-2">
 												<input
 													type="text"
-													className="w-full border border-amber-200 rounded px-2 py-1 text-sm"
+													className="w-full border border-amber-200 rounded px-2 py-1 text-sm bg-white text-gray-900 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 placeholder:dark:text-gray-400"
 													placeholder="Note"
 													value={taskNotes[i] || ''}
 													onChange={(e) => setTaskNotes(prev => {
@@ -333,7 +333,7 @@ export default function AttendancePage() {
 							<div className="px-3 py-2 border-t border-amber-200 bg-amber-50/30">
 								<label className="block text-sm font-medium text-amber-900 mb-1">Additional Note</label>
 								<textarea
-									className="w-full border border-amber-200 rounded p-2 text-sm min-h-[80px]"
+									className="w-full border border-amber-200 rounded p-2 text-sm min-h-[80px] bg-white text-gray-900 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 placeholder:dark:text-gray-400"
 									placeholder="Additional remarks..."
 									value={additionalNote}
 									onChange={(e) => setAdditionalNote(e.target.value)}
@@ -400,13 +400,13 @@ export default function AttendancePage() {
 						)}
 					</tbody>
 				</table>
-                <div className="flex justify-between items-center mt-3">
-                    <div className="text-sm opacity-70">Page {page} of {totalPages}</div>
-                    <div className="flex gap-2">
-                        <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page<=1} className="border border-amber-300 rounded px-3 py-1 disabled:opacity-50">Prev</button>
-                        <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page>=totalPages} className="border border-amber-300 rounded px-3 py-1 disabled:opacity-50">Next</button>
-                    </div>
-                </div>
+				<div className="flex justify-between items-center mt-3">
+					<div className="text-sm opacity-70">Page {page} of {totalPages}</div>
+					<div className="flex gap-2">
+						<button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} className="border border-amber-300 rounded px-3 py-1 disabled:opacity-50">Prev</button>
+						<button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className="border border-amber-300 rounded px-3 py-1 disabled:opacity-50">Next</button>
+					</div>
+				</div>
 			</div>
 		</div>
 	);

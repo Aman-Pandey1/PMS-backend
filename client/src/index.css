@@ -6,11 +6,41 @@
   color-scheme: light dark;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
 }
 
 body {
   margin: 0;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif;
+}
+
+/* Placeholder visibility: light mode */
+::placeholder {
+  opacity: 0.8;
+}
+
+/* Dark mode: placeholder must be light so it’s visible on dark inputs */
+@media (prefers-color-scheme: dark) {
+  ::placeholder {
+    color: #9ca3af;
+    /* gray-400 */
+    opacity: 0.95;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #9ca3af;
+  }
+
+  /* App-wide: inputs/textarea get readable bg and text in dark mode */
+  #root input,
+  #root textarea,
+  #root select {
+    background-color: rgb(31 41 55);
+    color: rgb(243 244 246);
+    border-color: rgb(75 85 99);
+  }
 }
